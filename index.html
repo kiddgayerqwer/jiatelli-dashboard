@@ -284,6 +284,12 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
 // 與訂單 Excel 相同的品項欄位（順序即 Excel 欄位順序），另加地板、其他
 const LINE_ITEMS = ['窗型冷氣', '分離式冷氣', '沙發', '直立式洗衣機', '滾筒式洗衣機', '單人床墊', '雙人床墊', '水塔'];
 const ITEM_LIST = [...LINE_ITEMS, '地板', '其他'];
+// 大類：篩選「冷氣」時窗型、分離式都算
+const BROAD = { '窗型冷氣': '冷氣', '分離式冷氣': '冷氣', '直立式洗衣機': '洗衣機', '滾筒式洗衣機': '洗衣機', '單人床墊': '床墊', '雙人床墊': '床墊', '沙發': '沙發', '水塔': '水塔', '地板': '地板', '其他': '其他' };
+const BROAD_LIST = ['冷氣', '洗衣機', '床墊', '沙發', '水塔', '地板', '其他'];
+const broadOf = (o) => [...new Set(o.itemList.map((k) => BROAD[k] || k))];
+// F.item：'' 全部、'G:冷氣' 大類、其他為細項
+const itemMatch = (o) => !F.item || (F.item.startsWith('G:') ? broadOf(o).includes(F.item.slice(2)) : o.itemList.includes(F.item));
 const OLD_ITEM = { '冷氣': '分離式冷氣', '洗衣機': '直立式洗衣機', '床墊除蟎': '雙人床墊' };
 // 判斷一段文字是哪個品項（越前面越優先）
 const ITEM_RULES = [
@@ -629,7 +635,7 @@ function draw() {
   fillSelect($('f-month'), [['', '全年'], ...monsInYear.map((m) => [m, `${+m} 月`])], F.mon);
   F.mon = $('f-month').value;
   $('f-month').disabled = F.year === 'all';
-  fillSelect($('f-item'), [['', '全部項目'], ...ITEM_LIST.map((x) => [x, x])], F.item);
+  fillSelect($('f-item'), [['', '全部項目'], ...BROAD_LIST.filter((g) => !['沙發', '水塔', '地板', '其他'].includes(g)).map((g) => ['G:' + g, `${g}（全部）`]), ...ITEM_LIST.map((x) => [x, x])], F.item);
   const byLast = (a, b) => (a === '未標示') - (b === '未標示') || a.localeCompare(b, 'zh-Hant');
   const counties = [...new Set(orders.map(countyOf))].sort((a, b) => (b === '台中市') - (a === '台中市') || byLast(a, b));
   fillSelect($('f-county'), [['', '全部縣市'], ...counties.map((c) => [c, c])], F.county);
@@ -641,7 +647,7 @@ function draw() {
 
   const per = period();
   const inMonth = orders.filter((o) => o.day.startsWith(per));
-  const byItem = (o) => !F.item || o.itemList.includes(F.item);
+  const byItem = itemMatch;
   const byArea = (o) => (!F.county || countyOf(o) === F.county) && (!F.area || o.area === F.area);
   const byCust = (o) => !F.cust || o.old === F.cust;
   const scoped = inMonth.filter((o) => byItem(o) && byArea(o) && byCust(o));
@@ -1027,25 +1033,28 @@ function loadLib(src) {
 function exportRows(list) {
   const head = ['預約日期', '姓名', '電話', '縣市', '地區', '詳細地址', '總金額', '舊客戶'];
   LINE_ITEMS.forEach((k) => head.push(k + '-數量', k + '-金額'));
-  head.push('備註');
+  head.push('備註', '服務項目');
   const rows = list.map((o) => {
     const extra = ['地板', '其他'].filter((k) => o.lines[k] && o.lines[k].a).map((k) => `${k} ${o.lines[k].a}元`);
     const r = [`${o.day.replace(/-/g, '/')}${o.time && o.time !== '全天' ? ' ' + o.time : ''}`, o.name, o.phone, o.county, o.area === '未標示' ? '' : o.area, o.addr, o.amount, o.old === '舊客戶' ? '是' : '否'];
     LINE_ITEMS.forEach((k) => r.push(o['q_' + k], o['a_' + k]));
     r.push([...extra, o.remark].filter(Boolean).join('；'));
+    r.push(BROAD_LIST.filter((g) => broadOf(o).includes(g)).join('、'));
     return r;
   });
   return [head, ...rows];
 }
 $('export-csv').addEventListener('click', async () => {
   const list = orders.filter((o) => o.day.startsWith(period()) && !o.excluded)
-    .filter((o) => (!F.item || o.itemList.includes(F.item)) && (!F.county || countyOf(o) === F.county) && (!F.area || o.area === F.area) && (!F.cust || o.old === F.cust))
+    .filter((o) => itemMatch(o) && (!F.county || countyOf(o) === F.county) && (!F.area || o.area === F.area) && (!F.cust || o.old === F.cust))
     .sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time));
   const aoa = exportRows(list);
-  const name = `${period() || '全部'}_嘉特利訂單`;
+  const name = `${period() || '全部'}_嘉特利訂單${F.item ? '_' + F.item.replace(/^G:/, '') : ''}`;
   if (window.XLSX || await loadLib(XLSX_SRC)) {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = aoa[0].map((h, i) => ({ wch: i === 0 ? 17 : i === 5 ? 30 : i === aoa[0].length - 1 ? 40 : Math.max(8, h.length * 2) }));
+    const last = aoa[0].length - 1;
+    ws['!cols'] = aoa[0].map((h, i) => ({ wch: i === 0 ? 17 : i === 5 ? 30 : i === last - 1 ? 40 : i === last ? 16 : Math.max(8, h.length * 2) }));
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: last } }) };
     aoa.slice(1).forEach((r, i) => { const c = ws[XLSX.utils.encode_cell({ r: i + 1, c: 2 })]; if (c) { c.t = 's'; c.v = String(r[2]); } });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '訂單資料');
