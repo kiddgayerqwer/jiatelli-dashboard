@@ -69,9 +69,16 @@ button, select, input, textarea { font: inherit; color: var(--fg); }
 .xl th.stick, .xl td.stick { position: sticky; left: 0; background: var(--panel); z-index: 2; }
 .xl th.stick { z-index: 3; }
 .xl td.zero { color: var(--line); }
-.xl td.remark { white-space: normal; min-width: 14rem; max-width: 22rem; font-size: .82rem; color: var(--muted); }
+.xl td.remark { white-space: normal; min-width: 10rem; max-width: 18rem; font-size: .82rem; color: var(--muted); }
 .xl td.addr { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; }
 .xl .sub { display: block; margin-top: 2px; }
+.xl td.items { white-space: normal; min-width: 12rem; }
+.xl .line { display: grid; grid-template-columns: 1fr auto; gap: 12px; line-height: 1.55; }
+.xl .line > span:first-child { white-space: nowrap; }
+.xl .line .q { color: var(--muted); }
+.xl .line .a { font-variant-numeric: tabular-nums; }
+.xl .line .a.none { color: var(--warn); font-size: .78rem; }
+.xl .tag.old { margin-left: 6px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th { position: sticky; top: 0; z-index: 1; background: var(--panel); text-align: left; font-size: .78rem; color: var(--muted); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th button { all: unset; cursor: pointer; }
@@ -191,27 +198,10 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
           <th data-k="day" class="stick"><button type="button">預約日期</button></th>
           <th data-k="name"><button type="button">姓名</button></th>
           <th data-k="phone"><button type="button">電話</button></th>
-          <th data-k="county"><button type="button">縣市</button></th>
           <th data-k="area"><button type="button">地區</button></th>
-          <th data-k="addr"><button type="button">詳細地址</button></th>
+          <th data-k="addr"><button type="button">地址</button></th>
+          <th data-k="items"><button type="button">品項</button></th>
           <th data-k="amount" class="r"><button type="button">總金額</button></th>
-          <th data-k="old"><button type="button">舊客戶</button></th>
-          <th data-k="q_窗型冷氣" class="r"><button type="button">窗型冷氣-數量</button></th>
-          <th data-k="a_窗型冷氣" class="r"><button type="button">窗型冷氣-金額</button></th>
-          <th data-k="q_分離式冷氣" class="r"><button type="button">分離式冷氣-數量</button></th>
-          <th data-k="a_分離式冷氣" class="r"><button type="button">分離式冷氣-金額</button></th>
-          <th data-k="q_沙發" class="r"><button type="button">沙發-數量</button></th>
-          <th data-k="a_沙發" class="r"><button type="button">沙發-金額</button></th>
-          <th data-k="q_直立式洗衣機" class="r"><button type="button">直立式洗衣機-數量</button></th>
-          <th data-k="a_直立式洗衣機" class="r"><button type="button">直立式洗衣機-金額</button></th>
-          <th data-k="q_滾筒式洗衣機" class="r"><button type="button">滾筒式洗衣機-數量</button></th>
-          <th data-k="a_滾筒式洗衣機" class="r"><button type="button">滾筒式洗衣機-金額</button></th>
-          <th data-k="q_單人床墊" class="r"><button type="button">單人床墊-數量</button></th>
-          <th data-k="a_單人床墊" class="r"><button type="button">單人床墊-金額</button></th>
-          <th data-k="q_雙人床墊" class="r"><button type="button">雙人床墊-數量</button></th>
-          <th data-k="a_雙人床墊" class="r"><button type="button">雙人床墊-金額</button></th>
-          <th data-k="q_水塔" class="r"><button type="button">水塔-數量</button></th>
-          <th data-k="a_水塔" class="r"><button type="button">水塔-金額</button></th>
           <th data-k="remark"><button type="button">備註</button></th>
           <th></th>
         </tr></thead>
@@ -732,25 +722,31 @@ function drawTable(rows, today) {
     if (o.excluded) tr.className = 'excluded';
     tr.title = o.summary;
     const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
-    const d = td(`${o.day.replace(/-/g, '/')} ${o.time === '全天' ? '' : o.time}`.trim(), 'stick');
+    const wd = '日一二三四五六'[new Date(o.day + 'T00:00:00').getDay()];
+    const dt = (F.year === 'all' ? o.day.slice(0, 4) + '/' : '') + o.day.slice(5).replace('-', '/');
+    const d = td(`${dt}（${wd}）${o.time === '全天' ? '' : ' ' + o.time}`, 'stick');
     if (o.day >= today) { d.append(' '); const t = document.createElement('span'); t.className = 'tag warn'; t.textContent = '預約'; d.append(t); }
-    td(o.name);
+    const nc = td(o.name || '—');
+    if (o.old === '舊客戶') { const t = document.createElement('span'); t.className = 'tag old'; t.textContent = '舊客'; nc.append(t); }
     td(o.phone);
-    td(o.county);
-    td(o.area);
+    td((o.county && !/^[臺台]中市$/.test(o.county) ? o.county : '') + (o.area === '未標示' ? (o.county ? '' : '—') : o.area));
     td(o.addr, 'addr').title = o.addr;
+    const ic = td('', 'items');
+    for (const k of o.itemList) {
+      const l = o.lines[k] || { q: 0, a: 0 };
+      const row = document.createElement('div'); row.className = 'line';
+      const nm = document.createElement('span');
+      nm.append(k + ' ');
+      const qs = document.createElement('span'); qs.className = 'q'; qs.textContent = '×' + (l.q || 1); nm.append(qs);
+      const am = document.createElement('span'); am.className = 'a' + (l.a ? '' : ' none'); am.textContent = l.a ? '$' + fmt(l.a) : '待報價';
+      row.append(nm, am); ic.append(row);
+    }
     const tot = td(fmt(o.amount), 'r');
     const tag = document.createElement('span');
     tag.className = 'tag sub' + (o.price === '待量測報價' ? ' warn' : (o.price === '標題判斷' || o.price === '不列入' ? ' mute' : ''));
     const ed = edits[o.id];
     tag.textContent = o.price + (ed ? (ed.pushed ? '・已改' : (canWrite() ? '・未上傳' : '・本機')) : '');
     tot.append(tag);
-    td(o.old === '舊客戶' ? '是' : '否');
-    for (const k of LINE_ITEMS) {
-      const qn = o['q_' + k], an = o['a_' + k];
-      td(String(qn), 'r' + (qn ? '' : ' zero'));
-      td(fmt(an), 'r' + (an ? '' : ' zero'));
-    }
     td(o.remark, 'remark');
     const ac = td('');
     const btn = document.createElement('button');
