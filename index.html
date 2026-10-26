@@ -51,6 +51,26 @@ button, select, input, textarea { font: inherit; color: var(--fg); }
 .kpi .lbl { font-size: .8rem; color: var(--muted); }
 .kpi .num { font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .kpi .sub { font-size: .8rem; color: var(--muted); }
+.kpi .delta { font-size: .8rem; font-variant-numeric: tabular-nums; min-height: 1.2em; margin: 2px 0; color: var(--muted); }
+.kpi .delta .up { color: var(--ok); } .kpi .delta .down { color: var(--bad); }
+button.kpi { text-align: left; font: inherit; color: inherit; cursor: pointer; }
+button.kpi:hover { border-color: var(--muted); }
+button.kpi.on { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.kpi.todo .num { color: var(--warn); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: 12px; }
+.mini { display: flex; flex-direction: column; }
+.mini .row { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 9.4rem 1fr auto; gap: 10px; align-items: baseline; padding: 7px 4px; border-top: 1px solid var(--line); }
+.mini .row:first-child { border-top: 0; }
+.mini .row:hover { background: var(--grid); }
+.mini .row:focus-visible { outline: 2px solid var(--accent); }
+.mini .when { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mini .when small { color: var(--muted); }
+.mini .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini .who small { color: var(--muted); margin-left: 6px; }
+.mini .amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mini .amt.warn { color: var(--warn); font-size: .82rem; }
+.mini .more { color: var(--muted); font-size: .82rem; padding: 8px 4px 0; }
+.chip { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 3px 12px; font-size: .82rem; cursor: pointer; margin-bottom: 10px; }
 .note { font-size: .8rem; color: var(--muted); margin: 2px 0 12px; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 12px; }
 .chart { width: 100%; min-height: 220px; }
@@ -165,21 +185,26 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
   </div>
 
   <section class="kpis">
-    <div class="card kpi"><div class="lbl">業績總額</div><div class="num" id="k-total">—</div><div class="sub" id="k-total-sub"></div></div>
-    <div class="card kpi"><div class="lbl">訂單數</div><div class="num" id="k-count">—</div><div class="sub" id="k-count-sub"></div></div>
-    <div class="card kpi"><div class="lbl">平均客單價</div><div class="num" id="k-avg">—</div><div class="sub" id="k-avg-sub"></div></div>
-    <div class="card kpi"><div class="lbl">舊客戶業績</div><div class="num" id="k-old">—</div><div class="sub" id="k-old-sub"></div></div>
+    <div class="card kpi"><div class="lbl">業績總額</div><div class="num" id="k-total">—</div><div class="delta" id="k-total-d"></div><div class="sub" id="k-total-sub"></div></div>
+    <div class="card kpi"><div class="lbl">訂單數</div><div class="num" id="k-count">—</div><div class="delta" id="k-count-d"></div><div class="sub" id="k-count-sub"></div></div>
+    <div class="card kpi"><div class="lbl">平均客單價</div><div class="num" id="k-avg">—</div><div class="delta" id="k-avg-d"></div><div class="sub" id="k-avg-sub"></div></div>
+    <button class="card kpi todo" id="k-todo-card" type="button"><div class="lbl">待處理訂單</div><div class="num" id="k-todo">—</div><div class="delta" id="k-todo-d"></div><div class="sub" id="k-todo-sub"></div></button>
   </section>
 
   <section class="card">
     <h2 id="chart-title">每日業績</h2>
-    <p class="note">深色為已完成，淺色為尚未到的預約。滑鼠停在長條上可看金額。</p>
+    <p class="note" id="chart-note">深色為已完成，淺色為尚未到的預約。滑鼠停在長條上可看金額。</p>
     <div id="chart"></div>
   </section>
 
+  <div class="grid2">
+    <section class="card"><h2>接下來 7 天的預約</h2><p class="note">從今天起一週內的行程，點一筆可編輯。</p><div class="mini" id="upcoming"></div></section>
+    <section class="card"><h2>需要補資料的訂單</h2><p class="note">還沒有金額，或找不到姓名、地址的訂單（目前篩選範圍內）。點一筆可編輯。</p><div class="mini" id="todo-list"></div></section>
+  </div>
+
   <div class="grid3">
     <section class="card"><h2>依服務項目</h2><p class="note">一筆含多個項目時，金額計入每個項目。點一列可篩選。</p><div class="hbars" id="by-item"></div></section>
-    <section class="card"><h2>依地區</h2><p class="note">由服務地址判斷台中市行政區。點一列可篩選。</p><div class="hbars" id="by-area"></div></section>
+    <section class="card"><h2>依地區</h2><p class="note">依服務地址判斷。點一列可篩選，只列前 8 名。</p><div class="hbars" id="by-area"></div></section>
     <section class="card"><h2>新客戶與舊客戶</h2><p class="note">標題有「老客人／舊客／回購」或在編輯中設為舊客戶。</p><div class="hbars" id="by-cust"></div></section>
   </div>
 
@@ -197,6 +222,7 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
       <label class="grow" for="search">搜尋<input id="search" type="search" placeholder="姓名、電話、地址、項目…"></label>
     </div>
     <p class="note" id="table-note"></p>
+    <button class="chip" id="todo-chip" type="button" hidden>只看待處理訂單 ✕</button>
     <div class="tablebox">
       <table class="xl">
         <thead><tr>
@@ -490,7 +516,19 @@ function toOrder(e) {
 
 /* ---------- 狀態 ---------- */
 let events = [], orders = [], sortKey = 'day', sortAsc = true;
-const F = { year: null, mon: '', item: '', county: '', area: '', cust: '' };
+const F = { year: null, mon: '', item: '', county: '', area: '', cust: '', todo: false };
+// 需要補資料：沒有金額，或找不到姓名／地址
+const needsWork = (o) => !o.excluded && (o.amount === 0 || !o.name || (!o.addr && o.area === '未標示'));
+// 上一個比較期間：單月 → 上個月；整年 → 去年；全部 → 無
+function prevPeriod() {
+  if (F.year === 'all') return null;
+  if (F.mon) { const y = +F.year, m = +F.mon; return m === 1 ? `${y - 1}-12` : `${y}-${pad2(m - 1)}`; }
+  return String(+F.year - 1);
+}
+function shiftDay(day, per) { // 把「今天」對應到上一期的同一天
+  if (per.length === 7) { const [y, m] = per.split('-').map(Number); const last = new Date(Date.UTC(y, m, 0)).getUTCDate(); return `${per}-${pad2(Math.min(+day.slice(8), last))}`; }
+  return `${per}-${day.slice(5)}`;
+}
 // 縣市分組用：臺／台視為同一個，沒填的歸「未標示」
 const countyOf = (o) => (o.county ? o.county.replace(/^臺/, '台') : '未標示');
 // 目前選的期間：'' = 全部年份，'2026' = 整年，'2026-10' = 單月
@@ -606,14 +644,15 @@ function draw() {
   const byItem = (o) => !F.item || o.itemList.includes(F.item);
   const byArea = (o) => (!F.county || countyOf(o) === F.county) && (!F.area || o.area === F.area);
   const byCust = (o) => !F.cust || o.old === F.cust;
-  const rows = inMonth.filter((o) => byItem(o) && byArea(o) && byCust(o));
-  const counted = rows.filter((o) => !o.excluded);
+  const scoped = inMonth.filter((o) => byItem(o) && byArea(o) && byCust(o));
+  const todoRows = scoped.filter(needsWork);
+  const rows = F.todo ? todoRows : scoped;
+  const counted = scoped.filter((o) => !o.excluded);
 
   const sum = counted.reduce((s, o) => s + o.amount, 0);
   const done = counted.filter((o) => o.day < today);
   const doneSum = done.reduce((s, o) => s + o.amount, 0);
   const priced = counted.filter((o) => o.amount > 0);
-  const oldSum = counted.filter((o) => o.old === '舊客戶').reduce((s, o) => s + o.amount, 0);
   const pending = counted.filter((o) => o.price === '待量測報價').length;
   const label = F.year === 'all' ? '全部年份' : (F.mon ? `${F.year} 年 ${+F.mon} 月` : `${F.year} 年`);
   const filtered = F.item || F.county || F.area || F.cust;
@@ -624,8 +663,39 @@ function draw() {
   $('k-count-sub').textContent = `已完成 ${done.length} 筆 · 待服務 ${counted.length - done.length} 筆`;
   $('k-avg').textContent = priced.length ? money(sum / priced.length) : '—';
   $('k-avg-sub').textContent = pending ? `以有金額的 ${priced.length} 筆計，${pending} 筆待報價` : `以 ${priced.length} 筆計`;
-  $('k-old').textContent = money(oldSum);
-  $('k-old-sub').textContent = sum ? `佔業績 ${Math.round((oldSum / sum) * 100)}%` : '';
+  const noPrice = todoRows.filter((o) => o.amount === 0).length;
+  $('k-todo').textContent = fmt(todoRows.length);
+  $('k-todo-sub').textContent = todoRows.length ? `${noPrice} 筆沒有金額 · ${todoRows.length - noPrice} 筆缺姓名或地址` : '都已補齊';
+  $('k-todo-d').textContent = todoRows.length ? (F.todo ? '正在只看這些訂單，再按一次取消' : '按這裡只看這些訂單') : '';
+  $('k-todo-card').classList.toggle('on', F.todo);
+  $('todo-chip').hidden = !F.todo;
+
+  // 和上一期比較（進行中的期間只比到今天為止）
+  const pp = prevPeriod();
+  ['k-total-d', 'k-count-d', 'k-avg-d'].forEach((id) => { $(id).textContent = ''; });
+  if (pp) {
+    const ongoing = per && today.startsWith(per);
+    const cut = ongoing ? shiftDay(today, pp) : null;
+    const prev = orders.filter((o) => o.day.startsWith(pp) && !o.excluded && byItem(o) && byArea(o) && byCust(o) && (!cut || o.day < cut));
+    const cur = ongoing ? counted.filter((o) => o.day < today) : counted;
+    const unit = F.mon ? '上月' : '去年';
+    const tag = ongoing ? `${unit}同期` : unit;
+    const pSum = prev.reduce((s, o) => s + o.amount, 0), cSum = cur.reduce((s, o) => s + o.amount, 0);
+    const pPriced = prev.filter((o) => o.amount > 0), cPriced = cur.filter((o) => o.amount > 0);
+    const pAvg = pPriced.length ? pSum / pPriced.length : 0, cAvg = cPriced.length ? cSum / cPriced.length : 0;
+    const put = (id, c, p, f) => {
+      const el = $(id);
+      if (!p) { el.textContent = prev.length ? '' : `${tag}沒有資料`; return; }
+      const pct = Math.round(((c - p) / p) * 100);
+      const s = document.createElement('span');
+      s.className = pct > 0 ? 'up' : (pct < 0 ? 'down' : '');
+      s.textContent = `${pct > 0 ? '▲' : (pct < 0 ? '▼' : '')}${Math.abs(pct)}%`;
+      el.replaceChildren(`比${tag}${ongoing ? '（到今天）' : ''} `, s, `（${f(p)}）`);
+    };
+    put('k-total-d', cSum, pSum, money);
+    put('k-count-d', cur.length, prev.length, (v) => fmt(v) + ' 筆');
+    put('k-avg-d', cAvg, pAvg, money);
+  }
   $('take').textContent = !events.length ? '還沒有日曆資料。' : counted.length
     ? `${label}${filtered ? '（已篩選）' : ''}共 ${counted.length} 筆訂單、業績 ${money(sum)}；已完成 ${done.length} 筆，還有 ${counted.length - done.length} 筆預約。${pending ? `${pending} 筆待量測報價。` : ''}`
     : `${label}${filtered ? '在目前篩選下' : ''}沒有訂單。`;
@@ -639,14 +709,48 @@ function draw() {
   };
   const base = inMonth.filter((o) => !o.excluded);
   hbars($('by-item'), group(base.filter((o) => byArea(o) && byCust(o)), (o) => o.itemList), F.item, (v) => { F.item = v; draw(); }, 'var(--c1)');
-  hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o) && (!F.county || countyOf(o) === F.county)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)');
+  hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o) && (!F.county || countyOf(o) === F.county)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)', 8);
   hbars($('by-cust'), group(base.filter((o) => byItem(o) && byArea(o)), (o) => [o.old]), F.cust, (v) => { F.cust = v; draw(); }, 'var(--c3)');
+
+  // 接下來 7 天（不受期間篩選影響）
+  const end = new Date(today + 'T00:00:00Z'); end.setUTCDate(end.getUTCDate() + 7);
+  const endDay = end.toISOString().slice(0, 10);
+  const upcoming = orders.filter((o) => !o.excluded && o.day >= today && o.day < endDay).sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+  miniList($('upcoming'), upcoming, 10, '這 7 天沒有預約。', (o) => (o.amount ? money(o.amount) : '待報價'));
+  miniList($('todo-list'), todoRows.slice().sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time)), 8, '目前篩選範圍內都已補齊。',
+    (o) => (o.amount === 0 ? '沒有金額' : (!o.name ? '缺姓名' : '缺地址')), true);
 
   drawTable(rows, today);
 }
 
-function hbars(box, data, selected, pick, color) {
+function miniList(box, list, limit, empty, right, warn) {
   box.replaceChildren();
+  if (!list.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = empty; box.append(p); return; }
+  const today = todayTW();
+  for (const o of list.slice(0, limit)) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'row';
+    const wd = '日一二三四五六'[new Date(o.day + 'T00:00:00').getDay()];
+    const w = document.createElement('span'); w.className = 'when';
+    w.append(o.day === today ? '今天' : `${+o.day.slice(5, 7)}/${+o.day.slice(8)}（${wd}）`);
+    const tm = document.createElement('small'); tm.textContent = o.time === '全天' ? '' : ' ' + o.time; w.append(tm);
+    const who = document.createElement('span'); who.className = 'who';
+    who.append(o.name || '（未填姓名）');
+    const sm = document.createElement('small'); sm.textContent = [o.area === '未標示' ? '' : o.area, o.items].filter(Boolean).join(' · '); who.append(sm);
+    const a = document.createElement('span'); const txt = right(o);
+    a.className = 'amt' + (warn || txt === '待報價' ? ' warn' : ''); a.textContent = txt;
+    b.append(w, who, a);
+    b.addEventListener('click', () => openEdit(o));
+    box.append(b);
+  }
+  if (list.length > limit) { const m = document.createElement('div'); m.className = 'more'; m.textContent = `還有 ${list.length - limit} 筆，請看下方訂單明細。`; box.append(m); }
+}
+
+function hbars(box, data, selected, pick, color, top) {
+  box.replaceChildren();
+  if (top && data.length > top + 1) {
+    const rest = data.slice(top);
+    data = data.slice(0, top).concat([{ key: `其他 ${rest.length} 區`, sum: rest.reduce((s, d) => s + d.sum, 0), n: rest.reduce((s, d) => s + d.n, 0), rest: true }]);
+  }
   const max = Math.max(1, ...data.map((d) => d.sum));
   for (const d of data) {
     const b = document.createElement('button');
@@ -658,7 +762,8 @@ function hbars(box, data, selected, pick, color) {
     tr.append(fi);
     const v = document.createElement('span'); v.className = 'val'; v.textContent = `${money(d.sum)} · ${d.n} 筆`;
     b.append(lab, tr, v);
-    b.addEventListener('click', () => pick(selected === d.key ? '' : d.key));
+    if (d.rest) { b.disabled = true; b.style.cursor = 'default'; fi.style.opacity = '.45'; }
+    else b.addEventListener('click', () => pick(selected === d.key ? '' : d.key));
     box.append(b);
   }
   if (!data.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = '沒有資料'; box.append(p); }
@@ -971,7 +1076,9 @@ $('f-item').addEventListener('change', () => { F.item = $('f-item').value; draw(
 $('f-county').addEventListener('change', () => { F.county = $('f-county').value; F.area = ''; draw(); });
 $('f-area').addEventListener('change', () => { F.area = $('f-area').value; draw(); });
 $('f-cust').addEventListener('change', () => { F.cust = $('f-cust').value; draw(); });
-$('reset').addEventListener('click', () => { F.item = F.county = F.area = F.cust = ''; $('search').value = ''; draw(); });
+$('k-todo-card').addEventListener('click', () => { F.todo = !F.todo; draw(); if (F.todo) $('todo-chip').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+$('todo-chip').addEventListener('click', () => { F.todo = false; draw(); });
+$('reset').addEventListener('click', () => { F.todo = false; F.item = F.county = F.area = F.cust = ''; $('search').value = ''; draw(); });
 $('search').addEventListener('input', () => draw());
 $('reload').addEventListener('click', () => loadData());
 $('conn-open').addEventListener('click', () => {
