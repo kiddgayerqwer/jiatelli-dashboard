@@ -134,6 +134,7 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
   <div class="notice" id="syncwarn" hidden></div>
 
   <div class="filters">
+    <label for="f-year">年份<select id="f-year"></select></label>
     <label for="f-month">月份<select id="f-month"></select></label>
     <label for="f-item">服務項目<select id="f-item"></select></label>
     <label for="f-area">地區<select id="f-area"></select></label>
@@ -308,14 +309,17 @@ function toOrder(e) {
   if (!items.length) items.push('其他');
 
   const titlePaid = raw.match(/實收[:：]\s*(\d+)/);
-  const text = raw.replace(PAID_LINE, '\n').replace(/(?<!\d)0\d{1,3}-?\d{3,4}-?\d{3,4}(?!\d)/g, '');
+  const text = raw.replace(PAID_LINE, '\n')
+    .replace(/(?<!\d)0\d{1,3}[- ]?\d{3,4}[- ]?\d{3,4}(?!\d)/g, '')          // 電話（含空格、橫線）
+    .replace(/(?<!\d)\d{3,6}(?=\s*[臺台]中|\s*[臺台]北|\s*新北|\s*彰化|\s*南投)/g, '')   // 郵遞區號
+    .replace(/統編\s*[:：]?\s*\d+/g, '');
   const deal = text.match(/優惠\s*\$?(\d+)/), total = text.match(/總價\s*\$?(\d+)/);
   let auto = 0;
   if (deal) auto = Number(deal[1]);
   else if (total) auto = Number(total[1]);
   else {
     const t = text.replace(/\d+\s*[*xX×]\s*\d+\s*=/g, '=');
-    for (const m of t.matchAll(/(?<![\d路街巷弄段號區樓統編+\-])(\d{3,6})(?![\d號巷弄樓路段街公萬台張點分之])/g)) auto += Number(m[1]);
+    for (const m of t.matchAll(/(?<![\d路街巷弄段號區樓統編+\-])(\d{3,5})(?![\d號巷弄樓路段街公萬台張點分之fF])/g)) auto += Number(m[1]);
   }
   const onsite = /現場量|公分|現場評估|現場算|現場報價|評估報價/.test(raw);
   const a3 = AREAS3.find((a) => text.includes(a));
@@ -351,7 +355,9 @@ function toOrder(e) {
 
 /* ---------- 狀態 ---------- */
 let events = [], orders = [], sortKey = 'day', sortAsc = true;
-const F = { month: null, item: '', area: '', cust: '' };
+const F = { year: null, mon: '', item: '', area: '', cust: '' };
+// 目前選的期間：'' = 全部年份，'2026' = 整年，'2026-10' = 單月
+const period = () => (F.year === 'all' ? '' : (F.mon ? `${F.year}-${F.mon}` : F.year));
 
 function rebuild() { orders = events.map(toOrder).filter(Boolean); }
 
@@ -436,15 +442,25 @@ function fillSelect(sel, opts, val) {
 function draw() {
   const today = todayTW();
   const months = [...new Set(orders.map((o) => o.day.slice(0, 7)))].sort().reverse();
-  if (F.month === null) F.month = months.includes(today.slice(0, 7)) ? today.slice(0, 7) : (months[0] || '');
-  fillSelect($('f-month'), [...months.map((m) => [m, `${m.slice(0, 4)} 年 ${+m.slice(5)} 月`]), ['all', '全部月份']], F.month);
-  F.month = $('f-month').value;
+  const years = [...new Set(months.map((m) => m.slice(0, 4)))];
+  if (F.year === null) {
+    const start = months.includes(today.slice(0, 7)) ? today.slice(0, 7) : (months[0] || '');
+    F.year = start ? start.slice(0, 4) : 'all';
+    F.mon = start ? start.slice(5) : '';
+  }
+  fillSelect($('f-year'), [...years.map((y) => [y, `${y} 年`]), ['all', '全部年份']], F.year);
+  F.year = $('f-year').value;
+  const monsInYear = F.year === 'all' ? [] : [...new Set(months.filter((m) => m.startsWith(F.year)).map((m) => m.slice(5)))].sort();
+  fillSelect($('f-month'), [['', '全年'], ...monsInYear.map((m) => [m, `${+m} 月`])], F.mon);
+  F.mon = $('f-month').value;
+  $('f-month').disabled = F.year === 'all';
   fillSelect($('f-item'), [['', '全部項目'], ...ITEM_LIST.map((x) => [x, x])], F.item);
   const areas = [...new Set(orders.map((o) => o.area))].sort((a, b) => (a === '未標示') - (b === '未標示') || a.localeCompare(b, 'zh-Hant'));
   fillSelect($('f-area'), [['', '全部地區'], ...areas.map((a) => [a, a])], F.area);
   fillSelect($('f-cust'), [['', '全部客戶'], ['舊客戶', '舊客戶'], ['新客戶', '新客戶']], F.cust);
 
-  const inMonth = orders.filter((o) => F.month === 'all' || o.day.startsWith(F.month));
+  const per = period();
+  const inMonth = orders.filter((o) => o.day.startsWith(per));
   const byItem = (o) => !F.item || o.itemList.includes(F.item);
   const byArea = (o) => !F.area || o.area === F.area;
   const byCust = (o) => !F.cust || o.old === F.cust;
@@ -457,7 +473,7 @@ function draw() {
   const priced = counted.filter((o) => o.amount > 0);
   const oldSum = counted.filter((o) => o.old === '舊客戶').reduce((s, o) => s + o.amount, 0);
   const pending = counted.filter((o) => o.price === '待量測報價').length;
-  const label = F.month === 'all' ? '全部月份' : `${+F.month.slice(5)} 月`;
+  const label = F.year === 'all' ? '全部年份' : (F.mon ? `${F.year} 年 ${+F.mon} 月` : `${F.year} 年`);
   const filtered = F.item || F.area || F.cust;
 
   $('k-total').textContent = money(sum);
@@ -515,19 +531,22 @@ function drawChart(list, today) {
   const box = $('chart');
   box.replaceChildren();
   let buckets;
-  if (F.month === 'all') {
+  if (!F.mon) {
     $('chart-title').textContent = '每月業績';
-    const ms = [...new Set(list.map((o) => o.day.slice(0, 7)))].sort();
-    buckets = ms.map((m) => ({ key: m, label: `${+m.slice(5)}月`, full: `${m.slice(0, 4)} 年 ${+m.slice(5)} 月`, past: m < today.slice(0, 7) }));
+    let ms;
+    if (F.year === 'all') ms = [...new Set(list.map((o) => o.day.slice(0, 7)))].sort();
+    else ms = Array.from({ length: 12 }, (_, i) => `${F.year}-${pad2(i + 1)}`);
+    const multi = new Set(ms.map((m) => m.slice(0, 4))).size > 1;
+    buckets = ms.map((m) => ({ key: m, label: multi ? `${m.slice(2, 4)}/${+m.slice(5)}` : `${+m.slice(5)}月`, full: `${m.slice(0, 4)} 年 ${+m.slice(5)} 月`, past: m < today.slice(0, 7) }));
     buckets.forEach((b) => { const v = list.filter((o) => o.day.startsWith(b.key)); b.sum = v.reduce((s, o) => s + o.amount, 0); b.n = v.length; });
   } else {
     $('chart-title').textContent = '每日業績';
-    if (!F.month) return;
-    const [y, m] = F.month.split('-').map(Number);
+    const ym = period();
+    const [y, m] = ym.split('-').map(Number);
     const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
     buckets = [];
     for (let d = 1; d <= days; d++) {
-      const key = `${F.month}-${pad2(d)}`;
+      const key = `${ym}-${pad2(d)}`;
       const v = list.filter((o) => o.day === key);
       buckets.push({ key, label: String(d), full: `${m} 月 ${d} 日`, past: key < today, sum: v.reduce((s, o) => s + o.amount, 0), n: v.length });
     }
@@ -712,12 +731,12 @@ function download(name, text, type) {
 }
 const csvCell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
 $('export-csv').addEventListener('click', () => {
-  const list = orders.filter((o) => F.month === 'all' || o.day.startsWith(F.month))
+  const list = orders.filter((o) => o.day.startsWith(period()))
     .filter((o) => (!F.item || o.itemList.includes(F.item)) && (!F.area || o.area === F.area) && (!F.cust || o.old === F.cust))
     .sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
   const head = ['日期', '時間', '服務項目', '地區', '客戶類型', '計價', '金額', '備註', '行程內容'];
   const lines = [head.map(csvCell).join(',')].concat(list.map((o) => [o.day, o.time, o.items, o.area, o.old, o.price, o.amount, o.memo, o.summary].map(csvCell).join(',')));
-  download(`嘉特利訂單_${F.month === 'all' ? '全部' : F.month}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+  download(`嘉特利訂單_${period() || '全部'}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
 });
 $('export-edits').addEventListener('click', () => download(`嘉特利修改備份_${todayTW()}.json`, JSON.stringify(edits, null, 1), 'application/json'));
 $('import-edits').addEventListener('click', () => $('import-file').click());
@@ -734,7 +753,8 @@ $('import-file').addEventListener('change', async () => {
 });
 
 /* ---------- 事件 ---------- */
-$('f-month').addEventListener('change', () => { F.month = $('f-month').value; draw(); });
+$('f-year').addEventListener('change', () => { F.year = $('f-year').value; F.mon = ''; draw(); });
+$('f-month').addEventListener('change', () => { F.mon = $('f-month').value; draw(); });
 $('f-item').addEventListener('change', () => { F.item = $('f-item').value; draw(); });
 $('f-area').addEventListener('change', () => { F.area = $('f-area').value; draw(); });
 $('f-cust').addEventListener('change', () => { F.cust = $('f-cust').value; draw(); });
