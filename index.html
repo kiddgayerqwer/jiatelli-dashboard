@@ -70,6 +70,15 @@ button.kpi.on { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--war
 .mini .amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mini .amt.warn { color: var(--warn); font-size: .82rem; }
 .mini .more { color: var(--muted); font-size: .82rem; padding: 8px 4px 0; }
+.filters .checks label { flex-direction: row; align-items: center; font-size: .85rem; color: var(--fg); min-height: 2.25rem; }
+.tpl { margin: 0 0 10px; }
+.tpl summary { cursor: pointer; color: var(--accent); font-size: .85rem; }
+.tpl textarea { width: 100%; margin-top: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; line-height: 1.5; resize: vertical; }
+#recall .ago { color: var(--muted); font-size: .8rem; margin-left: 6px; }
+#recall td.place { white-space: normal; min-width: 10rem; max-width: 18rem; }
+#recall td.place small { display: block; color: var(--muted); font-size: .8rem; }
+#recall td.what { white-space: normal; min-width: 10rem; max-width: 18rem; font-size: .85rem; }
+#recall .acts2 { display: flex; gap: 6px; }
 .chip { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 3px 12px; font-size: .82rem; cursor: pointer; margin-bottom: 10px; }
 .note { font-size: .8rem; color: var(--muted); margin: 2px 0 12px; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 12px; }
@@ -207,6 +216,50 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
     <section class="card"><h2>依地區</h2><p class="note">依服務地址判斷。點一列可篩選，只列前 8 名。</p><div class="hbars" id="by-area"></div></section>
     <section class="card"><h2>新客戶與舊客戶</h2><p class="note">標題有「老客人／舊客／回購」或在編輯中設為舊客戶。</p><div class="hbars" id="by-cust"></div></section>
   </div>
+
+  <section class="card" id="recall">
+    <div class="tools">
+      <h2>舊客戶回訪名單</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="recall-copy-phones" type="button">複製全部電話</button>
+        <button class="btn small" id="recall-export" type="button">匯出名單 Excel</button>
+      </div>
+    </div>
+    <p class="note">用電話把同一位客人的歷次訂單串起來，找出「某個項目上次做完已經過了一段時間」的客人，適合提醒他們再清洗。不受上方年份、月份篩選影響。</p>
+    <div class="filters" style="margin-bottom:10px">
+      <label for="r-item">服務項目<select id="r-item"></select></label>
+      <label for="r-since">上次做這個項目<select id="r-since">
+        <option value="3">3 個月以前</option><option value="6">半年以前</option><option value="9">9 個月以前</option>
+        <option value="12">1 年以前</option><option value="18">1 年半以前</option><option value="24">2 年以前</option>
+      </select></label>
+      <label for="r-until">最久到<select id="r-until">
+        <option value="0">不限</option><option value="12">1 年內</option><option value="18">1 年半內</option><option value="24">2 年內</option><option value="36">3 年內</option>
+      </select></label>
+      <label for="r-county">縣市<select id="r-county"></select></label>
+      <div class="checks" style="align-self:flex-end"><label><input type="checkbox" id="r-skip-booked" checked> 排除已經有新預約的客人</label></div>
+    </div>
+    <details class="tpl">
+      <summary>訊息範本（按每位客人的「複製訊息」會自動帶入姓名、項目和月數）</summary>
+      <textarea id="r-template" rows="4"></textarea>
+      <p class="hint">可用的代入欄位：{姓名}、{項目}、{月數}、{日期}、{地區}。修改後會自動記在這台電腦。</p>
+    </details>
+    <p class="note" id="recall-note"></p>
+    <div class="tablebox">
+      <table class="xl">
+        <thead><tr>
+          <th data-r="name"><button type="button">姓名</button></th>
+          <th data-r="phone"><button type="button">電話</button></th>
+          <th data-r="place"><button type="button">地區／地址</button></th>
+          <th data-r="lastDay"><button type="button">上次做這個項目</button></th>
+          <th data-r="lastItems"><button type="button">上次服務內容</button></th>
+          <th data-r="visits" class="r"><button type="button">來過幾次</button></th>
+          <th data-r="spend" class="r"><button type="button">累計消費</button></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="recall-body"></tbody>
+      </table>
+    </div>
+  </section>
 
   <section class="card">
     <div class="tools">
@@ -721,7 +774,148 @@ function draw() {
     (o) => (o.amount === 0 ? '沒有金額' : (!o.name ? '缺姓名' : '缺地址')), true);
 
   drawTable(rows, today);
+  drawRecall(today);
 }
+
+/* ---------- 舊客戶回訪名單 ---------- */
+const TPL_KEY = 'jiatelli-recall-template-v1';
+const TPL_DEFAULT = '{姓名}您好，我是嘉特利職人清潔 😊\n距離上次幫您做{項目}清潔已經約 {月數} 個月了，建議定期清洗維持乾淨與效能。\n這個月舊客戶回訪有專屬優惠，需要的話回覆想要的日期，我們幫您安排！';
+let recallRows = [], rSortKey = 'lastDay', rSortAsc = true;
+try { $('r-template').value = localStorage.getItem(TPL_KEY) || TPL_DEFAULT; } catch (e) { $('r-template').value = TPL_DEFAULT; }
+$('r-template').addEventListener('input', () => { try { localStorage.setItem(TPL_KEY, $('r-template').value); } catch (e) {} });
+
+const validPhone = (p) => /^09\d{8}$|^0[2-8]\d{7,8}$/.test(p) && !/^0+$/.test(p);
+const monthsAgo = (day, today) => {
+  const a = new Date(day + 'T00:00:00Z'), b = new Date(today + 'T00:00:00Z');
+  return (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth()) - (b.getUTCDate() < a.getUTCDate() ? 1 : 0);
+};
+
+function buildCustomers() {
+  const map = new Map();
+  for (const o of orders) {
+    if (o.excluded) continue;
+    const ph = String(o.phone || '').replace(/\D/g, '');
+    if (!validPhone(ph)) continue;
+    const c = map.get(ph) || { phone: ph, orders: [] };
+    c.orders.push(o);
+    map.set(ph, c);
+  }
+  for (const c of map.values()) {
+    c.orders.sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+    const latest = [...c.orders].reverse();
+    c.name = (latest.find((o) => o.name) || {}).name || '';
+    const withAddr = latest.find((o) => o.addr) || latest[0];
+    c.county = countyOf(withAddr); c.area = withAddr.area; c.addr = withAddr.addr || '';
+    c.visits = c.orders.length;
+    c.spend = c.orders.reduce((s, o) => s + o.amount, 0);
+  }
+  return [...map.values()];
+}
+
+function drawRecall(today) {
+  if (!$('r-item').dataset.init) { $('r-item').dataset.init = '1'; fillSelect($('r-item'), [['分離式冷氣', '分離式冷氣']], '分離式冷氣'); $('r-since').value = '6'; }
+  const item = $('r-item').value || '';
+  const since = +$('r-since').value, until = +$('r-until').value;
+  const all = buildCustomers();
+  const counties = [...new Set(all.map((c) => c.county))].sort((a, b) => (b === '台中市') - (a === '台中市') || (a === '未標示') - (b === '未標示') || a.localeCompare(b, 'zh-Hant'));
+  fillSelect($('r-item'), [['', '任何項目'], ...ITEM_LIST.filter((k) => k !== '其他').map((k) => [k, k])], item);
+  fillSelect($('r-county'), [['', '全部縣市'], ...counties.map((c) => [c, c])], $('r-county').value);
+  const county = $('r-county').value;
+  const skipBooked = $('r-skip-booked').checked;
+
+  const out = [];
+  let noPhone = 0;
+  for (const o of orders) if (!o.excluded && !validPhone(String(o.phone || '').replace(/\D/g, ''))) noPhone++;
+  for (const c of all) {
+    if (county && c.county !== county) continue;
+    const done = c.orders.filter((o) => o.day < today && (!item || o.itemList.includes(item)));
+    if (!done.length) continue;
+    const last = done[done.length - 1];
+    const ago = monthsAgo(last.day, today);
+    if (ago < since || (until && ago > until)) continue;
+    const booked = c.orders.some((o) => o.day >= today);
+    if (skipBooked && booked) continue;
+    // 之後如果又做過同一個項目（例如已經回訪過），就不列
+    out.push({ ...c, last, lastDay: last.day, ago, booked, lastItems: last.itemList.join('、'), itemName: item || last.itemList.join('、'), place: c.area + c.addr });
+  }
+  out.sort((a, b) => {
+    const va = a[rSortKey], vb = b[rSortKey];
+    const r = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'zh-Hant');
+    return rSortAsc ? r : -r;
+  });
+  recallRows = out;
+  document.querySelectorAll('th[data-r]').forEach((th) => th.setAttribute('aria-sort', th.dataset.r === rSortKey ? (rSortAsc ? 'ascending' : 'descending') : 'none'));
+
+  const earliest = orders.length ? orders.reduce((m, o) => (o.day < m ? o.day : m), orders[0].day) : '';
+  const span = earliest ? monthsAgo(earliest, today) : 0;
+  $('recall-note').textContent = `符合條件 ${out.length} 位客人。`
+    + (span < since ? `目前日曆資料最早只到 ${earliest.replace(/-/g, '/')}（約 ${span} 個月前），所以「${$('r-since').selectedOptions[0].textContent}」還不會有人；日曆資料越累積，名單會越完整。` : '')
+    + (noPhone ? `另有 ${noPhone} 筆訂單找不到有效電話，沒有列入，可以用「編輯」補上電話。` : '');
+
+  const body = $('recall-body');
+  body.replaceChildren(...out.map((c) => {
+    const tr = document.createElement('tr');
+    const td = (text, cls) => { const e = document.createElement('td'); if (cls) e.className = cls; e.textContent = text; tr.append(e); return e; };
+    const nc = td(c.name || '（未填姓名）');
+    if (c.visits > 1) { const t = document.createElement('span'); t.className = 'tag old'; t.textContent = '回頭客'; nc.append(t); }
+    td(c.phone.replace(/^(09\d{2})(\d{3})(\d{3})$/, '$1-$2-$3'));
+    const pl = td(c.area === '未標示' ? '' : c.area, 'place');
+    if (c.addr) { const s = document.createElement('small'); s.textContent = c.addr; pl.append(s); }
+    const lc = td(c.lastDay.replace(/-/g, '/'));
+    const ag = document.createElement('span'); ag.className = 'ago'; ag.textContent = `${c.ago} 個月前`; lc.append(ag);
+    td(c.lastItems, 'what');
+    td(String(c.visits), 'r');
+    td(money(c.spend), 'r');
+    const ac = td('');
+    const box = document.createElement('div'); box.className = 'acts2';
+    const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'btn small'; cp.textContent = '複製訊息';
+    cp.addEventListener('click', () => copyText(fillTpl(c), cp, '已複製'));
+    const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'btn small'; ed.textContent = '上次訂單';
+    ed.addEventListener('click', () => openEdit(c.last));
+    box.append(cp, ed); ac.append(box);
+    return tr;
+  }));
+}
+
+function fillTpl(c) {
+  const name = c.name ? c.name : '您好';
+  return $('r-template').value
+    .replace(/\{姓名\}/g, c.name || '')
+    .replace(/\{項目\}/g, c.itemName)
+    .replace(/\{月數\}/g, String(c.ago))
+    .replace(/\{日期\}/g, `${+c.lastDay.slice(5, 7)}/${+c.lastDay.slice(8)}`)
+    .replace(/\{地區\}/g, c.area === '未標示' ? '' : c.area)
+    .replace(/^您好，/, name === '您好' ? '您好，' : '');
+}
+async function copyText(text, btn, done) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.append(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e2) {}
+    ta.remove();
+  }
+  const old = btn.textContent; btn.textContent = ok ? done : '複製失敗'; setTimeout(() => { btn.textContent = old; }, 1500);
+}
+['r-item', 'r-since', 'r-until', 'r-county', 'r-skip-booked'].forEach((id) => $(id).addEventListener('change', () => drawRecall(todayTW())));
+document.querySelectorAll('th[data-r] button').forEach((b) => b.addEventListener('click', () => {
+  const k = b.parentElement.dataset.r;
+  if (rSortKey === k) rSortAsc = !rSortAsc; else { rSortKey = k; rSortAsc = !['visits', 'spend'].includes(k); }
+  drawRecall(todayTW());
+}));
+$('recall-copy-phones').addEventListener('click', () => copyText(recallRows.map((c) => c.phone).join('\n'), $('recall-copy-phones'), `已複製 ${recallRows.length} 支電話`));
+$('recall-export').addEventListener('click', async () => {
+  const head = ['姓名', '電話', '縣市', '地區', '詳細地址', '上次服務日期', '距今月數', '上次服務內容', '來過幾次', '累計消費', '訊息'];
+  const aoa = [head, ...recallRows.map((c) => [c.name, c.phone, c.county === '未標示' ? '' : c.county, c.area === '未標示' ? '' : c.area, c.addr, c.lastDay.replace(/-/g, '/'), c.ago, c.lastItems, c.visits, c.spend, fillTpl(c)])];
+  const name = `舊客戶回訪名單_${($('r-item').value || '全部項目')}_${todayTW()}`;
+  if (window.XLSX || await loadLib(XLSX_SRC)) {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [10, 13, 8, 8, 30, 12, 8, 22, 8, 10, 60].map((w) => ({ wch: w }));
+    aoa.slice(1).forEach((r, i) => { const cell = ws[XLSX.utils.encode_cell({ r: i + 1, c: 1 })]; if (cell) { cell.t = 's'; cell.v = String(r[1]); } });
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '回訪名單'); XLSX.writeFile(wb, name + '.xlsx');
+  } else download(name + '.csv', '\ufeff' + aoa.map((r) => r.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8');
+});
 
 function miniList(box, list, limit, empty, right, warn) {
   box.replaceChildren();
