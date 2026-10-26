@@ -158,6 +158,7 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
     <label for="f-year">年份<select id="f-year"></select></label>
     <label for="f-month">月份<select id="f-month"></select></label>
     <label for="f-item">服務項目<select id="f-item"></select></label>
+    <label for="f-county">縣市<select id="f-county"></select></label>
     <label for="f-area">地區<select id="f-area"></select></label>
     <label for="f-cust">客戶<select id="f-cust"></select></label>
     <button class="btn" id="reset" type="button">清除篩選</button>
@@ -489,7 +490,9 @@ function toOrder(e) {
 
 /* ---------- 狀態 ---------- */
 let events = [], orders = [], sortKey = 'day', sortAsc = true;
-const F = { year: null, mon: '', item: '', area: '', cust: '' };
+const F = { year: null, mon: '', item: '', county: '', area: '', cust: '' };
+// 縣市分組用：臺／台視為同一個，沒填的歸「未標示」
+const countyOf = (o) => (o.county ? o.county.replace(/^臺/, '台') : '未標示');
 // 目前選的期間：'' = 全部年份，'2026' = 整年，'2026-10' = 單月
 const period = () => (F.year === 'all' ? '' : (F.mon ? `${F.year}-${F.mon}` : F.year));
 
@@ -589,14 +592,19 @@ function draw() {
   F.mon = $('f-month').value;
   $('f-month').disabled = F.year === 'all';
   fillSelect($('f-item'), [['', '全部項目'], ...ITEM_LIST.map((x) => [x, x])], F.item);
-  const areas = [...new Set(orders.map((o) => o.area))].sort((a, b) => (a === '未標示') - (b === '未標示') || a.localeCompare(b, 'zh-Hant'));
+  const byLast = (a, b) => (a === '未標示') - (b === '未標示') || a.localeCompare(b, 'zh-Hant');
+  const counties = [...new Set(orders.map(countyOf))].sort((a, b) => (b === '台中市') - (a === '台中市') || byLast(a, b));
+  fillSelect($('f-county'), [['', '全部縣市'], ...counties.map((c) => [c, c])], F.county);
+  F.county = $('f-county').value;
+  const areas = [...new Set(orders.filter((o) => !F.county || countyOf(o) === F.county).map((o) => o.area))].sort(byLast);
   fillSelect($('f-area'), [['', '全部地區'], ...areas.map((a) => [a, a])], F.area);
+  F.area = $('f-area').value;
   fillSelect($('f-cust'), [['', '全部客戶'], ['舊客戶', '舊客戶'], ['新客戶', '新客戶']], F.cust);
 
   const per = period();
   const inMonth = orders.filter((o) => o.day.startsWith(per));
   const byItem = (o) => !F.item || o.itemList.includes(F.item);
-  const byArea = (o) => !F.area || o.area === F.area;
+  const byArea = (o) => (!F.county || countyOf(o) === F.county) && (!F.area || o.area === F.area);
   const byCust = (o) => !F.cust || o.old === F.cust;
   const rows = inMonth.filter((o) => byItem(o) && byArea(o) && byCust(o));
   const counted = rows.filter((o) => !o.excluded);
@@ -608,7 +616,7 @@ function draw() {
   const oldSum = counted.filter((o) => o.old === '舊客戶').reduce((s, o) => s + o.amount, 0);
   const pending = counted.filter((o) => o.price === '待量測報價').length;
   const label = F.year === 'all' ? '全部年份' : (F.mon ? `${F.year} 年 ${+F.mon} 月` : `${F.year} 年`);
-  const filtered = F.item || F.area || F.cust;
+  const filtered = F.item || F.county || F.area || F.cust;
 
   $('k-total').textContent = money(sum);
   $('k-total-sub').textContent = `已完成 ${money(doneSum)} · 待服務 ${money(sum - doneSum)}`;
@@ -631,7 +639,7 @@ function draw() {
   };
   const base = inMonth.filter((o) => !o.excluded);
   hbars($('by-item'), group(base.filter((o) => byArea(o) && byCust(o)), (o) => o.itemList), F.item, (v) => { F.item = v; draw(); }, 'var(--c1)');
-  hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)');
+  hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o) && (!F.county || countyOf(o) === F.county)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)');
   hbars($('by-cust'), group(base.filter((o) => byItem(o) && byArea(o)), (o) => [o.old]), F.cust, (v) => { F.cust = v; draw(); }, 'var(--c3)');
 
   drawTable(rows, today);
@@ -926,7 +934,7 @@ function exportRows(list) {
 }
 $('export-csv').addEventListener('click', async () => {
   const list = orders.filter((o) => o.day.startsWith(period()) && !o.excluded)
-    .filter((o) => (!F.item || o.itemList.includes(F.item)) && (!F.area || o.area === F.area) && (!F.cust || o.old === F.cust))
+    .filter((o) => (!F.item || o.itemList.includes(F.item)) && (!F.county || countyOf(o) === F.county) && (!F.area || o.area === F.area) && (!F.cust || o.old === F.cust))
     .sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time));
   const aoa = exportRows(list);
   const name = `${period() || '全部'}_嘉特利訂單`;
@@ -960,9 +968,10 @@ $('import-file').addEventListener('change', async () => {
 $('f-year').addEventListener('change', () => { F.year = $('f-year').value; F.mon = ''; draw(); });
 $('f-month').addEventListener('change', () => { F.mon = $('f-month').value; draw(); });
 $('f-item').addEventListener('change', () => { F.item = $('f-item').value; draw(); });
+$('f-county').addEventListener('change', () => { F.county = $('f-county').value; F.area = ''; draw(); });
 $('f-area').addEventListener('change', () => { F.area = $('f-area').value; draw(); });
 $('f-cust').addEventListener('change', () => { F.cust = $('f-cust').value; draw(); });
-$('reset').addEventListener('click', () => { F.item = F.area = F.cust = ''; $('search').value = ''; draw(); });
+$('reset').addEventListener('click', () => { F.item = F.county = F.area = F.cust = ''; $('search').value = ''; draw(); });
 $('search').addEventListener('input', () => draw());
 $('reload').addEventListener('click', () => loadData());
 $('conn-open').addEventListener('click', () => {
