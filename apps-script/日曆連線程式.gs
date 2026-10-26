@@ -1,5 +1,5 @@
 /**
- * 嘉特利日曆連線（Google Apps Script 網頁應用程式）　版本 2：可改行程標題
+ * 嘉特利日曆連線（Google Apps Script 網頁應用程式）　版本 3：可改標題、寫回姓名／地址／品項明細
  *
  * 讓桌面「嘉特利業績」資料夾：
  *   - 即時讀取「黃金單身坤-業務排程」日曆的行程
@@ -14,7 +14,8 @@ const CAL_ID = '0978f50fe0c3a8293598bed4f4c3143db7c45aeb6d6e8ed3d50fc0b1843bc8c1
 const TZ = 'Asia/Taipei';
 const TAG = '【嘉特利訂單】';
 const OLD_TAGS = ['【嘉特利結帳】'];
-const ITEMS = ['冷氣', '洗衣機', '床墊除蟎', '沙發', '地板', '其他'];
+const VERSION = 3;
+const RESERVED = ['實收金額', '量測', '服務項目', '地區', '客戶類型', '不列入業績', '結帳備註', '最後修改'];
 
 function cal_() {
   const c = CalendarApp.getCalendarById(CAL_ID);
@@ -37,7 +38,7 @@ function doGet(e) {
     const p = (e && e.parameter) || {};
     if (p.token !== TOKEN) return json_({ ok: false, error: '金鑰不正確' });
     const cal = cal_();
-    if (p.action === 'ping') return json_({ ok: true, calendar: cal.getName() });
+    if (p.action === 'ping') return json_({ ok: true, version: VERSION, calendar: cal.getName() });
 
     const from = day_(p.from, -730);
     const to = day_(p.to, 400);
@@ -54,13 +55,13 @@ function doGet(e) {
         allDay: allDay,
       };
     });
-    return json_({ ok: true, at: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'), events: events });
+    return json_({ ok: true, version: VERSION, at: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'), events: events });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   }
 }
 
-/** 寫回修改：POST {token, id, summary?, changes:{items, area, old, amount, len, rate, memo, excluded}} 或 {token, id, clear:true}
+/** 寫回修改：POST {token, id, summary?, changes:{items, area, old, amount, len, rate, memo, excluded, fields:{姓名, 電話, 縣市, 詳細地址, 明細}}} 或 {token, id, clear:true}
  *  summary 有給時會改行程標題。 */
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -91,12 +92,18 @@ function doPost(e) {
       lines.push('實收金額：' + a);
     }
     if (Number(c.len) > 0 && Number(c.rate) > 0) lines.push('量測：' + Number(c.len) + ' 公分 × ' + Number(c.rate) + ' 元');
-    const items = (c.items || []).filter((x) => ITEMS.indexOf(x) >= 0);
+    const items = (c.items || []).filter((x) => /^[\u4e00-\u9fff]{1,8}$/.test(String(x)));
     if (items.length) lines.push('服務項目：' + items.join('、'));
     if (c.area) lines.push('地區：' + String(c.area).slice(0, 20));
     if (c.old === '舊客戶' || c.old === '新客戶') lines.push('客戶類型：' + c.old);
     if (c.excluded) lines.push('不列入業績：是');
     if (c.memo) lines.push('結帳備註：' + String(c.memo).replace(/\s+/g, ' ').slice(0, 300));
+    const f = c.fields || {};
+    Object.keys(f).forEach((k) => {
+      if (!/^[\u4e00-\u9fff]{1,8}$/.test(k) || RESERVED.indexOf(k) >= 0) return;
+      const v = String(f[k] == null ? '' : f[k]).replace(/\s+/g, ' ').trim().slice(0, 500);
+      if (v) lines.push(k + '：' + v);
+    });
     lines.push('最後修改：' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm') + '（桌面業績表）');
 
     if (typeof body.summary === 'string' && body.summary.trim()) ev.setTitle(body.summary.slice(0, 1000));

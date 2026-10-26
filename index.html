@@ -65,6 +65,13 @@ button, select, input, textarea { font: inherit; color: var(--fg); }
 .hrow.on .lab { font-weight: 700; }
 .hrow.dim { opacity: .4; }
 .tablebox { max-height: 34rem; overflow: auto; border-top: 1px solid var(--line); }
+.xl th, .xl td { white-space: nowrap; }
+.xl th.stick, .xl td.stick { position: sticky; left: 0; background: var(--panel); z-index: 2; }
+.xl th.stick { z-index: 3; }
+.xl td.zero { color: var(--line); }
+.xl td.remark { white-space: normal; min-width: 14rem; max-width: 22rem; font-size: .82rem; color: var(--muted); }
+.xl td.addr { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; }
+.xl .sub { display: block; margin-top: 2px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th { position: sticky; top: 0; z-index: 1; background: var(--panel); text-align: left; font-size: .78rem; color: var(--muted); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th button { all: unset; cursor: pointer; }
@@ -85,6 +92,9 @@ tr.excluded td { opacity: .45; }
 dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--panel); color: var(--fg); width: min(40rem, calc(100vw - 32px)); }
 dialog::backdrop { background: rgba(0,0,0,.4); }
 .dlg { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-height: 85vh; overflow: auto; }
+.items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 6px 14px; margin-top: 4px; }
+.items-grid .it { display: grid; grid-template-columns: 6.5rem 3.6rem 1fr; gap: 6px; align-items: center; color: var(--fg); font-size: .85rem; }
+.items-grid input { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; min-height: 2rem; font-variant-numeric: tabular-nums; }
 .dlg textarea { min-height: 7rem; resize: vertical; line-height: 1.5; font-size: .9rem; }
 .dlg .orig { font-size: .82rem; color: var(--muted); white-space: pre-line; background: var(--bg); border-radius: 8px; padding: 10px; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); }
@@ -165,27 +175,44 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
     <div class="tools">
       <h2>訂單明細</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn small" id="export-csv" type="button">匯出 Excel（CSV）</button>
+        <button class="btn small" id="export-csv" type="button">匯出 Excel</button>
         <button class="btn small" id="export-edits" type="button">備份我的修改</button>
         <button class="btn small" id="import-edits" type="button">還原修改</button>
         <input type="file" id="import-file" accept=".json,application/json" hidden>
       </div>
     </div>
     <div class="filters" style="margin-bottom:10px">
-      <label class="grow" for="search">搜尋<input id="search" type="search" placeholder="客戶、電話、地址、項目…"></label>
+      <label class="grow" for="search">搜尋<input id="search" type="search" placeholder="姓名、電話、地址、項目…"></label>
     </div>
     <p class="note" id="table-note"></p>
     <div class="tablebox">
-      <table>
+      <table class="xl">
         <thead><tr>
-          <th data-k="day"><button type="button">日期</button></th>
-          <th data-k="time" class="hide-sm"><button type="button">時間</button></th>
-          <th data-k="items"><button type="button">項目</button></th>
+          <th data-k="day" class="stick"><button type="button">預約日期</button></th>
+          <th data-k="name"><button type="button">姓名</button></th>
+          <th data-k="phone"><button type="button">電話</button></th>
+          <th data-k="county"><button type="button">縣市</button></th>
           <th data-k="area"><button type="button">地區</button></th>
-          <th data-k="old" class="hide-sm"><button type="button">客戶</button></th>
-          <th data-k="price"><button type="button">計價</button></th>
-          <th data-k="amount" class="r"><button type="button">金額</button></th>
-          <th data-k="note" class="hide-sm"><button type="button">內容</button></th>
+          <th data-k="addr"><button type="button">詳細地址</button></th>
+          <th data-k="amount" class="r"><button type="button">總金額</button></th>
+          <th data-k="old"><button type="button">舊客戶</button></th>
+          <th data-k="q_窗型冷氣" class="r"><button type="button">窗型冷氣-數量</button></th>
+          <th data-k="a_窗型冷氣" class="r"><button type="button">窗型冷氣-金額</button></th>
+          <th data-k="q_分離式冷氣" class="r"><button type="button">分離式冷氣-數量</button></th>
+          <th data-k="a_分離式冷氣" class="r"><button type="button">分離式冷氣-金額</button></th>
+          <th data-k="q_沙發" class="r"><button type="button">沙發-數量</button></th>
+          <th data-k="a_沙發" class="r"><button type="button">沙發-金額</button></th>
+          <th data-k="q_直立式洗衣機" class="r"><button type="button">直立式洗衣機-數量</button></th>
+          <th data-k="a_直立式洗衣機" class="r"><button type="button">直立式洗衣機-金額</button></th>
+          <th data-k="q_滾筒式洗衣機" class="r"><button type="button">滾筒式洗衣機-數量</button></th>
+          <th data-k="a_滾筒式洗衣機" class="r"><button type="button">滾筒式洗衣機-金額</button></th>
+          <th data-k="q_單人床墊" class="r"><button type="button">單人床墊-數量</button></th>
+          <th data-k="a_單人床墊" class="r"><button type="button">單人床墊-金額</button></th>
+          <th data-k="q_雙人床墊" class="r"><button type="button">雙人床墊-數量</button></th>
+          <th data-k="a_雙人床墊" class="r"><button type="button">雙人床墊-金額</button></th>
+          <th data-k="q_水塔" class="r"><button type="button">水塔-數量</button></th>
+          <th data-k="a_水塔" class="r"><button type="button">水塔-金額</button></th>
+          <th data-k="remark"><button type="button">備註</button></th>
           <th></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -198,10 +225,20 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
   <form class="dlg" method="dialog" id="dlg-form">
     <h2 id="dlg-title">編輯訂單</h2>
     <label class="field" for="dlg-summary">行程標題（日曆上看到的那一段）<textarea id="dlg-summary" rows="5"></textarea></label>
-    <div class="field">服務項目<div class="checks" id="dlg-items"></div></div>
     <div class="row2">
+      <label class="field" for="dlg-name">姓名<input id="dlg-name" type="text"></label>
+      <label class="field" for="dlg-phone">電話<input id="dlg-phone" type="tel" inputmode="tel"></label>
+      <label class="field" for="dlg-cust">舊客戶<select id="dlg-cust"><option value="新客戶">否</option><option value="舊客戶">是</option></select></label>
+    </div>
+    <div class="row2">
+      <label class="field" for="dlg-county">縣市<input id="dlg-county" type="text" list="county-list"></label>
       <label class="field" for="dlg-area">地區<select id="dlg-area"></select></label>
-      <label class="field" for="dlg-cust">客戶類型<select id="dlg-cust"><option>新客戶</option><option>舊客戶</option></select></label>
+    </div>
+    <label class="field" for="dlg-addr">詳細地址<input id="dlg-addr" type="text"></label>
+    <datalist id="county-list"></datalist>
+    <div class="field">品項明細（數量／金額）
+      <div class="items-grid" id="dlg-lines"></div>
+      <span class="hint" id="dlg-linesum"></span>
     </div>
     <div class="row2">
       <label class="field" for="dlg-len">量測長度（公分）<input id="dlg-len" type="number" min="0" step="1" inputmode="numeric"></label>
@@ -223,8 +260,17 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
 
 <script>
 /* ---------- 讀取設定 ---------- */
-const ITEM_LIST = ['冷氣', '洗衣機', '床墊除蟎', '沙發', '地板', '其他'];
-const ITEM_RE = [['冷氣', /冷氣/], ['洗衣機', /洗衣服?機/], ['床墊除蟎', /床墊|除塵蟎|床|抽洗|枕頭|棉被|單人|雙人/], ['沙發', /沙發/], ['地板', /地板/]];
+// 與訂單 Excel 相同的品項欄位（順序即 Excel 欄位順序），另加地板、其他
+const LINE_ITEMS = ['窗型冷氣', '分離式冷氣', '沙發', '直立式洗衣機', '滾筒式洗衣機', '單人床墊', '雙人床墊', '水塔'];
+const ITEM_LIST = [...LINE_ITEMS, '地板', '其他'];
+const OLD_ITEM = { '冷氣': '分離式冷氣', '洗衣機': '直立式洗衣機', '床墊除蟎': '雙人床墊' };
+// 判斷一段文字是哪個品項（越前面越優先）
+const ITEM_RULES = [
+  ['窗型冷氣', /窗型/], ['分離式冷氣', /冷氣/], ['滾筒式洗衣機', /滾筒/], ['直立式洗衣機', /洗衣服?機/],
+  ['水塔', /水塔/], ['沙發', /沙發/], ['單人床墊', /單人/],
+  ['雙人床墊', /雙人|加大|特大|標準床|床墊|除塵蟎|兒童床|床/], ['地板', /地板/],
+];
+const COUNTIES = ['台中市', '臺中市', '台北市', '臺北市', '新北市', '桃園市', '台南市', '臺南市', '高雄市', '彰化縣', '南投縣', '苗栗縣', '雲林縣', '新竹市', '新竹縣', '基隆市', '嘉義市', '嘉義縣', '宜蘭縣', '花蓮縣', '台東縣', '臺東縣', '屏東縣'];
 const AREAS3 = ['西屯', '南屯', '北屯', '豐原', '東勢', '大甲', '清水', '沙鹿', '梧棲', '后里', '神岡', '潭子', '大雅', '新社', '石岡', '外埔', '大安', '烏日', '大肚', '龍井', '霧峰', '太平', '大里', '和平'];
 const CITY = ['中區', '東區', '南區', '西區', '北區'];
 const AREA_OPTIONS = [...CITY, ...AREAS3.map((a) => a + '區'), '未標示'];
@@ -293,6 +339,80 @@ function parseICS(text) {
 
 /* ---------- 由行程判斷訂單 ---------- */
 const PAID_LINE = /\n?[ \t]*實收[:：]\s*\d+\s*元?[ \t]*/g;
+const CN_NUM = { 一: 1, 兩: 2, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+const PHONE_RE = /(?<!\d)(0\d{1,3})[- ]?(\d{3,4})[- ]?(\d{3,4})(?!\d)/;
+const NOT_NAME = /現場|清洗|清潔|沙發|冷氣|床|優惠|總價|休息|回診|保養|師傅|評估|客廳|房間|地址|電話/;
+
+// 把標題拆成「品項 × 數量 = 金額」
+function parseLines(text) {
+  const out = {};
+  let last = null;
+  for (const seg of text.split(/\n|\+|＋|，|,|；|;|。/)) {
+    const rule = ITEM_RULES.find(([, re]) => re.test(seg));
+    if (!rule) {
+      // 單獨一行的價格（例如「2000元」「濕洗5200」）算到上一個還沒有金額的品項
+      const pm = seg.match(/(?<![\d路街巷弄段號區樓=+])(\d{3,5})\s*元?(?![\d號巷弄樓路段街公萬台張點分之fF=*])/);
+      if (last && out[last].a === 0 && pm && !/優惠|總價|折|實收|統編|公分/.test(seg)) out[last].a = Number(pm[1]);
+      continue;
+    }
+    const cat = rule[0];
+    last = cat;
+    let q = 1;
+    const qm = seg.match(/(\d{1,2}|[一兩二三四五六七八九十])\s*(台|張|組|個|顆|座|片|套|條)/) || seg.match(/[*xX×]\s*(\d{1,2})(?!\d)/);
+    if (qm) q = CN_NUM[qm[1]] || Number(qm[1]) || 1;
+    let a = 0;
+    const eq = seg.match(/=\s*\$?(\d{3,6})/);
+    if (eq) a = Number(eq[1]);
+    else {
+      const pm = seg.match(/(\d{3,5})\s*元?\s*[*xX×]\s*(\d{1,2})(?!\d)/);
+      if (pm) a = Number(pm[1]) * Number(pm[2]);
+      else for (const m of seg.matchAll(/(?<![\d路街巷弄段號區樓+\-])(\d{3,5})(?![\d號巷弄樓路段街公萬台張點分之fF])/g)) a += Number(m[1]);
+    }
+    const o = out[cat] || (out[cat] = { q: 0, a: 0 });
+    o.q += q; o.a += a;
+  }
+  return out;
+}
+function parseDetail(s) {
+  const out = {};
+  for (const part of String(s || '').split(/[、；;]/)) {
+    const m = part.trim().match(/^([\u4e00-\u9fff]{1,8})\s*[×xX*]\s*(\d+)\s*=\s*(\d+)$/);
+    if (m && ITEM_LIST.includes(m[1])) out[m[1]] = { q: Number(m[2]), a: Number(m[3]) };
+  }
+  return out;
+}
+const detailText = (lines) => ITEM_LIST.filter((k) => lines[k] && (lines[k].q || lines[k].a)).map((k) => `${k}×${lines[k].q || 0}=${lines[k].a || 0}`).join('、');
+
+// 從標題找姓名、電話、縣市、地址
+function parseContact(raw) {
+  const ls = raw.split('\n').map((s) => s.trim()).filter(Boolean);
+  let name = '', phone = '';
+  const pm = raw.match(PHONE_RE);
+  if (pm) phone = pm[1] + pm[2] + pm[3];
+  const nm = raw.match(/(?:聯絡人姓名|聯絡人|姓名|客戶|客人)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z]{1,6}?)(?=電話|手機|服務|地址|住址|[\s,，:：0-9(（]|$)/);
+  if (nm) name = nm[1];
+  if (!name) for (const l of ls) {
+    let m = l.match(/^([\u4e00-\u9fff]{1,4}(?:小姐|先生|太太)?)[\s,，:：]*0\d/);
+    if (!m) m = l.match(/0\d{1,3}[- ]?\d{3,4}[- ]?\d{3,4}\s*[,，]?\s*([\u4e00-\u9fff]{2,4}(?:小姐|先生|太太)?)\s*$/);
+    if (m && !NOT_NAME.test(m[1])) { name = m[1]; break; }
+  }
+  if (!name) name = ls.find((l) => /^[\u4e00-\u9fff]{1,4}(小姐|先生|太太)$|^[\u4e00-\u9fff]{2,3}$/.test(l) && !/[路街號區市巷樓]/.test(l) && !NOT_NAME.test(l)) || '';
+  let line = (raw.match(/(?:服務住址|服務地址|住址|地址)\s*[:：]?\s*(.+)/) || [])[1];
+  if (!line) line = ls.find((l) => /(路|街|大道|巷|弄)/.test(l) && /號|樓|巷/.test(l) && !/^\d{1,2}月/.test(l) && !/\d元/.test(l)) || '';
+  line = line.replace(PHONE_RE, '').replace(/^\s*\d{3,6}\s*/, '').trim();
+  const county = COUNTIES.find((c) => line.startsWith(c)) || '';
+  let rest = county ? line.slice(county.length) : line.replace(/^(台中|臺中)/, '');
+  const dm = rest.match(/^([\u4e00-\u9fff]{1,3}?[區鄉鎮])/);
+  if (dm) rest = rest.slice(dm[1].length);
+  return { name, phone, county, district: dm ? dm[1] : '', addr: rest.replace(/^[\s,，]+/, '').replace(/[。.，,\s]+$/, '').trim() };
+}
+// 標題裡不是日期、聯絡資料、地址、品項的文字，當作備註
+function leftoverNote(raw, c) {
+  return raw.split('\n').map((s) => s.trim()).filter((l) => l
+    && !/^\d{1,2}月\d{1,2}[號日]/.test(l) && !PHONE_RE.test(l) && !/^(聯絡人姓名|聯絡人|姓名|電話|服務住址|服務地址|住址|地址)/.test(l) && !/^\$?\d{3,5}\s*元?$/.test(l)
+    && !(c.addr && l.includes(c.addr)) && l !== c.name && !/^實收[:：]/.test(l)
+    && !ITEM_RULES.some(([, re]) => re.test(l))).join('；');
+}
 function toOrder(e) {
   const ed0 = edits[e.id] || null;
   const raw = String((ed0 && typeof ed0.summary === 'string' && ed0.summary) || e.summary || '');
@@ -301,12 +421,6 @@ function toOrder(e) {
   const block = at >= 0 ? desc.slice(at) : '';
   const get = (k) => { const m = block.match(new RegExp(k + '[:：]\\s*(.*)')); return m ? m[1].trim() : ''; };
   const ed = edits[e.id] || null;
-
-  let items = ITEM_RE.filter(([, re]) => re.test(raw)).map(([n]) => n);
-  const blockItems = get('服務項目').split(/[、,，\s]+/).filter((x) => ITEM_LIST.includes(x));
-  if (!items.length && !/清潔|清洗/.test(raw) && !blockItems.length && !ed) return null;
-  if (blockItems.length) items = blockItems;
-  if (!items.length) items.push('其他');
 
   const titlePaid = raw.match(/實收[:：]\s*(\d+)/);
   const text = raw.replace(PAID_LINE, '\n')
@@ -322,8 +436,28 @@ function toOrder(e) {
     for (const m of t.matchAll(/(?<![\d路街巷弄段號區樓統編+\-])(\d{3,5})(?![\d號巷弄樓路段街公萬台張點分之fF])/g)) auto += Number(m[1]);
   }
   const onsite = /現場量|公分|現場評估|現場算|現場報價|評估報價/.test(raw);
+
+  // 品項明細：本機修改 → 說明欄「明細」 → 從標題拆
+  let lines = parseLines(text);
+  const bDetail = parseDetail(get('明細'));
+  let detailSet = false;
+  if (Object.keys(bDetail).length) { lines = bDetail; detailSet = true; }
+  const blockItems = get('服務項目').split(/[、,，\s]+/).map((x) => OLD_ITEM[x] || x).filter((x) => ITEM_LIST.includes(x));
+  if (ed && ed.lines) { lines = ed.lines; detailSet = true; }
+  let items = ITEM_LIST.filter((k) => lines[k] && (lines[k].q || lines[k].a));
+  if (!detailSet && blockItems.length) items = blockItems;
+  if (ed && !ed.lines && ed.items && ed.items.length) items = ed.items.map((x) => OLD_ITEM[x] || x);
+  if (!items.length && !/清潔|清洗/.test(raw) && !ed && !blockItems.length) return null;
+  if (!items.length) items = ['其他'];
+
+  // 客戶資料：本機修改 → 說明欄 → 從標題找
+  const pc = parseContact(raw);
+  let name = get('姓名') || pc.name, phone = get('電話') || pc.phone, addr = get('詳細地址') || pc.addr;
+  let county = get('縣市') || pc.county;
   const a3 = AREAS3.find((a) => text.includes(a));
-  let area = get('地區') || (a3 ? a3 + '區' : (CITY.find((a) => text.includes(a)) || '未標示'));
+  let area = get('地區') || (pc.district && (AREA_OPTIONS.includes(pc.district) || county) ? pc.district : '') || (a3 ? a3 + '區' : (CITY.find((a) => text.includes(a)) || '未標示'));
+  if (!county && AREA_OPTIONS.includes(area) && area !== '未標示') county = '台中市';
+  if (ed && ed.contact) ({ name, phone, county, addr } = Object.assign({ name, phone, county, addr }, ed.contact));
   const bOld = get('客戶類型');
   let old = /^(舊客戶|新客戶)$/.test(bOld) ? bOld : (/老客|舊客|回購|回頭客|熟客/.test(raw) ? '舊客戶' : '新客戶');
   const bPaid = get('實收金額');
@@ -333,7 +467,6 @@ function toOrder(e) {
   if (lm) { len = lm[1]; rate = lm[2]; }
 
   if (ed) {
-    if (ed.items && ed.items.length) items = ed.items;
     if (ed.area) area = ed.area;
     if (ed.old) old = ed.old;
     if (ed.amount !== undefined && ed.amount !== null && ed.amount !== '') paid = Number(ed.amount);
@@ -342,15 +475,22 @@ function toOrder(e) {
     if (ed.memo !== undefined) memo = ed.memo;
     excluded = !!ed.excluded;
   }
+  const lineSum = ITEM_LIST.reduce((s, k) => s + ((lines[k] && lines[k].a) || 0), 0);
+  if (detailSet && paid === null && lineSum > 0) auto = lineSum;
   const amount = excluded ? 0 : (paid !== null ? paid : auto);
   const price = excluded ? '不列入' : (paid !== null ? '實收' : (auto === 0 || onsite ? '待量測報價' : '標題判斷'));
-  return {
+  const contact = { name, phone, county, addr };
+  const o = {
     id: e.id, day: e.day, time: e.allDay ? '全天' : e.time,
     items: items.join('、'), itemList: items, area, old, amount, auto, paid, onsite, price, excluded,
-    len, rate, memo, edited: !!ed,
+    len, rate, memo, edited: !!ed, lines, lineSum, detailSet,
+    name, phone, county, addr, contact,
+    remark: memo || leftoverNote(raw, contact),
     summary: raw,
     note: raw.replace(/^\s*\d{1,2}月\d{1,2}號\s*/, '').replace(/\s*\n\s*/g, '\n').trim(),
   };
+  for (const k of LINE_ITEMS) { o['q_' + k] = (lines[k] && lines[k].q) || 0; o['a_' + k] = (lines[k] && lines[k].a) || 0; }
+  return o;
 }
 
 /* ---------- 狀態 ---------- */
@@ -579,7 +719,7 @@ function drawChart(list, today) {
 
 function drawTable(rows, today) {
   const q = $('search').value.trim();
-  const shown = rows.filter((o) => !q || [o.day, o.items, o.area, o.old, o.summary, o.memo].join(' ').includes(q));
+  const shown = rows.filter((o) => !q || [o.day, o.name, o.phone, o.county, o.area, o.addr, o.items, o.old, o.summary, o.remark].join(' ').includes(q));
   shown.sort((a, b) => {
     const va = a[sortKey], vb = b[sortKey];
     const c = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'zh-Hant');
@@ -590,22 +730,29 @@ function drawTable(rows, today) {
   body.replaceChildren(...shown.map((o) => {
     const tr = document.createElement('tr');
     if (o.excluded) tr.className = 'excluded';
+    tr.title = o.summary;
     const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
-    const d = td(o.day.slice(5).replace('-', '/'), 'nowrap');
+    const d = td(`${o.day.replace(/-/g, '/')} ${o.time === '全天' ? '' : o.time}`.trim(), 'stick');
     if (o.day >= today) { d.append(' '); const t = document.createElement('span'); t.className = 'tag warn'; t.textContent = '預約'; d.append(t); }
-    td(o.time, 'nowrap hide-sm');
-    td(o.items);
-    td(o.area, 'nowrap');
-    td(o.old, 'nowrap hide-sm');
-    const pc = td('', 'nowrap');
+    td(o.name);
+    td(o.phone);
+    td(o.county);
+    td(o.area);
+    td(o.addr, 'addr').title = o.addr;
+    const tot = td(fmt(o.amount), 'r');
     const tag = document.createElement('span');
-    tag.className = 'tag' + (o.price === '待量測報價' ? ' warn' : (o.price === '標題判斷' || o.price === '不列入' ? ' mute' : ''));
+    tag.className = 'tag sub' + (o.price === '待量測報價' ? ' warn' : (o.price === '標題判斷' || o.price === '不列入' ? ' mute' : ''));
     const ed = edits[o.id];
-    tag.textContent = o.price + (ed ? (ed.pushed ? '・已改' : (canWrite() ? '・未上傳' : '・已改（本機）')) : '');
-    pc.append(tag);
-    td(fmt(o.amount), 'r');
-    td(o.note + (o.memo ? '\n備註：' + o.memo : ''), 'txt hide-sm');
-    const ac = td('', 'nowrap');
+    tag.textContent = o.price + (ed ? (ed.pushed ? '・已改' : (canWrite() ? '・未上傳' : '・本機')) : '');
+    tot.append(tag);
+    td(o.old === '舊客戶' ? '是' : '否');
+    for (const k of LINE_ITEMS) {
+      const qn = o['q_' + k], an = o['a_' + k];
+      td(String(qn), 'r' + (qn ? '' : ' zero'));
+      td(fmt(an), 'r' + (an ? '' : ' zero'));
+    }
+    td(o.remark, 'remark');
+    const ac = td('');
     const btn = document.createElement('button');
     btn.type = 'button'; btn.className = 'btn small'; btn.textContent = '編輯';
     btn.addEventListener('click', () => openEdit(o));
@@ -613,22 +760,45 @@ function drawTable(rows, today) {
     return tr;
   }));
   const waiting = Object.values(edits).filter((e) => !e.pushed).length;
-  $('table-note').textContent = `顯示 ${shown.length} 筆。金額依序採用：編輯過的實收金額 → 標題的優惠價或總價 → 標題中的價格加總。`
-    + (canWrite() ? (waiting ? `有 ${waiting} 筆修改還沒寫回日曆，連上網路後會自動重試。` : '修改會自動寫回 Google 日曆。')
-      : (Object.keys(edits).length ? `有 ${Object.keys(edits).length} 筆修改只存在這台電腦（尚未設定寫回日曆）。` : ''));
+  $('table-note').textContent = `顯示 ${shown.length} 筆。姓名、地址、品項是從行程標題自動判斷的，不對的地方請按「編輯」修正；滑鼠停在一列上可看完整標題。`
+    + (canWrite() ? (waiting ? `有 ${waiting} 筆修改還沒寫回日曆，連上網路後會自動重試。` : '') + (window.JT_FEED && !(window.JT_FEED.version >= 3) ? '（日曆連線程式需要更新才能寫回姓名、地址、品項明細，見使用說明。）' : '')
+      : (Object.keys(edits).length ? `有 ${Object.keys(edits).length} 筆修改只存在這台電腦。` : ''));
 }
 
 /* ---------- 編輯 ---------- */
 let editing = null;
 const dlg = $('dlg');
-ITEM_LIST.forEach((n) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = 'checkbox'; c.value = n; l.append(c, ' ' + n); $('dlg-items').append(l); });
+ITEM_LIST.forEach((n) => {
+  const row = document.createElement('div'); row.className = 'it';
+  const lab = document.createElement('span'); lab.textContent = n;
+  const qi = document.createElement('input'); qi.type = 'number'; qi.min = '0'; qi.step = '1'; qi.inputMode = 'numeric'; qi.dataset.k = n; qi.dataset.f = 'q'; qi.setAttribute('aria-label', n + '數量');
+  const ai = document.createElement('input'); ai.type = 'number'; ai.min = '0'; ai.step = '1'; ai.inputMode = 'numeric'; ai.dataset.k = n; ai.dataset.f = 'a'; ai.setAttribute('aria-label', n + '金額'); ai.placeholder = '金額';
+  qi.placeholder = '數量';
+  row.append(lab, qi, ai); $('dlg-lines').append(row);
+});
+COUNTIES.forEach((c) => $('county-list').append(new Option(c)));
 AREA_OPTIONS.forEach((a) => $('dlg-area').append(new Option(a, a)));
+function readLines() {
+  const out = {};
+  $('dlg-lines').querySelectorAll('input').forEach((i) => {
+    const v = Number(i.value) || 0;
+    if (!v) return;
+    (out[i.dataset.k] || (out[i.dataset.k] = { q: 0, a: 0 }))[i.dataset.f] = Math.round(v);
+  });
+  return out;
+}
+function showLineSum() {
+  const s = Object.values(readLines()).reduce((x, l) => x + (l.a || 0), 0);
+  $('dlg-linesum').textContent = s ? `品項金額合計 NT$${fmt(s)}${$('dlg-amt').value ? '' : '（實收金額留空時，總金額就用這個合計）'}` : '';
+}
+$('dlg-lines').addEventListener('input', showLineSum);
 
 function openEdit(o) {
   editing = o;
   $('dlg-title').textContent = `編輯訂單　${+o.day.slice(5, 7)}/${+o.day.slice(8)} ${o.time}`;
   $('dlg-summary').value = o.summary;
-  $('dlg-items').querySelectorAll('input').forEach((c) => { c.checked = o.itemList.includes(c.value); });
+  $('dlg-name').value = o.name; $('dlg-phone').value = o.phone; $('dlg-county').value = o.county; $('dlg-addr').value = o.addr;
+  $('dlg-lines').querySelectorAll('input').forEach((i) => { const l = o.lines[i.dataset.k]; const v = l ? l[i.dataset.f] : 0; i.value = v ? v : ''; });
   if (![...$('dlg-area').options].some((op) => op.value === o.area)) $('dlg-area').append(new Option(o.area, o.area));
   $('dlg-area').value = o.area;
   $('dlg-cust').value = o.old;
@@ -636,13 +806,14 @@ function openEdit(o) {
   $('dlg-len').value = o.len || '';
   $('dlg-rate').value = o.rate || (sofa ? 10 : '');
   $('dlg-amt').value = o.paid !== null ? o.paid : '';
-  $('dlg-amt').placeholder = o.auto ? '標題判斷 ' + fmt(o.auto) : '尚未有金額';
+  $('dlg-amt').placeholder = o.auto ? '目前 ' + fmt(o.auto) : '尚未有金額';
   $('dlg-memo').value = o.memo || '';
   $('dlg-excl').checked = o.excluded;
-  $('dlg-hint').textContent = '實收金額留空時，沿用標題裡的金額。填量測長度與單價會自動算出實收金額。';
-  $('dlg-clear').hidden = !edits[o.id] && o.price !== '實收' && !o.excluded;
+  $('dlg-hint').textContent = '總金額：有填實收金額就用實收；沒填就用品項金額合計或標題裡的金額。填量測長度與單價會自動算出實收金額。';
+  showLineSum();
+  $('dlg-clear').hidden = !edits[o.id] && o.price !== '實收' && !o.excluded && !o.detailSet;
   $('dlg-where').textContent = canWrite()
-    ? '按「儲存」會寫回 Google 日曆：標題照上面改，分類與金額另記在說明欄。師傅的日曆上也看得到。'
+    ? '按「儲存」會寫回 Google 日曆：標題照上面改，客戶資料、品項明細、分類與金額另記在說明欄。師傅的日曆上也看得到。' + (window.JT_FEED && !(window.JT_FEED.version >= 3) ? ' 注意：日曆連線程式還是舊版，姓名、地址、品項明細不會寫回日曆，請照使用說明更新。' : '')
     : '尚未設定寫回日曆：修改只存在這台電腦。要寫回日曆，請執行資料夾裡的「設定寫回日曆.bat」。';
   dlg.showModal();
 }
@@ -662,8 +833,9 @@ $('dlg-clear').addEventListener('click', async () => {
   delete edits[id]; saveEdits(); dlg.close(); rebuild(); draw();
 });
 $('dlg-save').addEventListener('click', () => {
-  const items = [...$('dlg-items').querySelectorAll('input:checked')].map((c) => c.value);
-  if (!items.length) { $('dlg-hint').textContent = '請至少勾選一個服務項目。'; return; }
+  const lines = readLines();
+  let items = ITEM_LIST.filter((k) => lines[k]);
+  if (!items.length) items = ['其他'];
   const amt = $('dlg-amt').value.trim();
   if (amt !== '' && !(Number(amt) >= 0)) { $('dlg-hint').textContent = '實收金額要是 0 以上的數字。'; return; }
   let summary = $('dlg-summary').value.replace(/\r/g, '').replace(/\s+$/, '');
@@ -671,7 +843,8 @@ $('dlg-save').addEventListener('click', () => {
   if ($('dlg-amt-title').checked && amt !== '') summary = summary.replace(PAID_LINE, '').replace(/\s+$/, '') + '\n實收：' + Math.round(Number(amt)) + '元';
   edits[editing.id] = {
     summary: summary !== editing.summary ? summary : undefined,
-    items, area: $('dlg-area').value, old: $('dlg-cust').value,
+    items, lines, area: $('dlg-area').value, old: $('dlg-cust').value,
+    contact: { name: $('dlg-name').value.trim(), phone: $('dlg-phone').value.replace(/[^\d]/g, ''), county: $('dlg-county').value.trim(), addr: $('dlg-addr').value.trim() },
     amount: amt === '' ? null : Math.round(Number(amt)),
     len: $('dlg-len').value, rate: $('dlg-rate').value, memo: $('dlg-memo').value.trim(),
     excluded: $('dlg-excl').checked, day: editing.day, at: new Date().toISOString(),
@@ -702,6 +875,10 @@ async function pushOne(id) {
   const ed = edits[id];
   if (!ed || !canWrite()) return;
   const payload = { id, changes: { items: ed.items, area: ed.area, old: ed.old, amount: ed.amount, len: ed.len, rate: ed.rate, memo: ed.memo, excluded: ed.excluded } };
+  if (ed.contact || ed.lines) {
+    const c = ed.contact || {};
+    payload.changes.fields = { '姓名': c.name || '', '電話': c.phone || '', '縣市': c.county || '', '詳細地址': c.addr || '', '明細': ed.lines ? detailText(ed.lines) : '' };
+  }
   if (typeof ed.summary === 'string' && ed.summary.trim()) payload.summary = ed.summary;
   const r = await push(payload);
   if (edits[id] !== ed) return;
@@ -730,13 +907,40 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 const csvCell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-$('export-csv').addEventListener('click', () => {
-  const list = orders.filter((o) => o.day.startsWith(period()))
+const XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+function loadLib(src) {
+  return new Promise((res) => { const s = document.createElement('script'); s.src = src; s.onload = () => res(true); s.onerror = () => res(false); document.head.append(s); });
+}
+function exportRows(list) {
+  const head = ['預約日期', '姓名', '電話', '縣市', '地區', '詳細地址', '總金額', '舊客戶'];
+  LINE_ITEMS.forEach((k) => head.push(k + '-數量', k + '-金額'));
+  head.push('備註');
+  const rows = list.map((o) => {
+    const extra = ['地板', '其他'].filter((k) => o.lines[k] && o.lines[k].a).map((k) => `${k} ${o.lines[k].a}元`);
+    const r = [`${o.day.replace(/-/g, '/')}${o.time && o.time !== '全天' ? ' ' + o.time : ''}`, o.name, o.phone, o.county, o.area === '未標示' ? '' : o.area, o.addr, o.amount, o.old === '舊客戶' ? '是' : '否'];
+    LINE_ITEMS.forEach((k) => r.push(o['q_' + k], o['a_' + k]));
+    r.push([...extra, o.remark].filter(Boolean).join('；'));
+    return r;
+  });
+  return [head, ...rows];
+}
+$('export-csv').addEventListener('click', async () => {
+  const list = orders.filter((o) => o.day.startsWith(period()) && !o.excluded)
     .filter((o) => (!F.item || o.itemList.includes(F.item)) && (!F.area || o.area === F.area) && (!F.cust || o.old === F.cust))
-    .sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
-  const head = ['日期', '時間', '服務項目', '地區', '客戶類型', '計價', '金額', '備註', '行程內容'];
-  const lines = [head.map(csvCell).join(',')].concat(list.map((o) => [o.day, o.time, o.items, o.area, o.old, o.price, o.amount, o.memo, o.summary].map(csvCell).join(',')));
-  download(`嘉特利訂單_${period() || '全部'}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+    .sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time));
+  const aoa = exportRows(list);
+  const name = `${period() || '全部'}_嘉特利訂單`;
+  if (window.XLSX || await loadLib(XLSX_SRC)) {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = aoa[0].map((h, i) => ({ wch: i === 0 ? 17 : i === 5 ? 30 : i === aoa[0].length - 1 ? 40 : Math.max(8, h.length * 2) }));
+    aoa.slice(1).forEach((r, i) => { const c = ws[XLSX.utils.encode_cell({ r: i + 1, c: 2 })]; if (c) { c.t = 's'; c.v = String(r[2]); } });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '訂單資料');
+    XLSX.writeFile(wb, name + '.xlsx');
+  } else {
+    download(name + '.csv', '\ufeff' + aoa.map((r) => r.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8');
+    $('table-note').textContent = '目前連不到網路，先匯出成 CSV（Excel 一樣打得開）。';
+  }
 });
 $('export-edits').addEventListener('click', () => download(`嘉特利修改備份_${todayTW()}.json`, JSON.stringify(edits, null, 1), 'application/json'));
 $('import-edits').addEventListener('click', () => $('import-file').click());
