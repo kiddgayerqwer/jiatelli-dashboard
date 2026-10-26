@@ -4,28 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>嘉特利業績表</title>
+<link rel="icon" href="logo.png">
 <style>
 /* Layout: one wide work column — sync bar, filters, four figures, daily chart, three breakdowns, then the order table. */
 :root {
-  --bg: #f4f6f4; --panel: #ffffff; --fg: #1c231f; --muted: #5b6760; --line: #dce2dd; --grid: #e8ece9;
-  --accent: #1f7a5c; --accent-fg: #ffffff; --accent-soft: #e2f0e9;
-  --c1: #1f7a5c; --c2: #2f6fb0; --c3: #b0662f;
-  --warn: #9a5a00; --warn-soft: #fbefdc; --bad: #b3261e; --bad-soft: #fbe5e3; --ok: #1f7a5c;
+  /* 深色主題，主色取自嘉特利 LOGO 的品牌藍 */
+  --bg: #0c1220; --panel: #141c2e; --fg: #e6ecf7; --muted: #95a3bd; --line: #24304a; --grid: #1c263b;
+  --accent: #4d8ef7; --accent-fg: #07122a; --accent-soft: #15284d;
+  --c1: #4d8ef7; --c2: #3cc6cf; --c3: #e3a45f;
+  --warn: #f0b45a; --warn-soft: #33281a; --bad: #ff8a80; --bad-soft: #3a1f22; --ok: #5cc99f;
   --font: "Microsoft JhengHei UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
   --radius: 10px;
-  color-scheme: light;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) { :root {
-  --bg: #111513; --panel: #1a1f1c; --fg: #e7ebe8; --muted: #a1ada6; --line: #2d3530; --grid: #252c28;
-  --accent: #5cc49b; --accent-fg: #0c1912; --accent-soft: #1c3228;
-  --c1: #5cc49b; --c2: #6fa8e0; --c3: #e09a63;
-  --warn: #f0b45a; --warn-soft: #33281a; --bad: #ff8a80; --bad-soft: #3a1f1d; --ok: #5cc49b;
-  color-scheme: dark; } }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.5; }
 .wrap { max-width: 78rem; margin-inline: auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
 h1 { font-size: 1.6rem; margin: 0; font-weight: 700; }
 h2 { font-size: 1.02rem; margin: 0; font-weight: 700; }
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.brand .logo { width: 64px; height: 64px; border-radius: 50%; background: #fff; flex: none; object-fit: cover; box-shadow: 0 0 0 3px var(--accent-soft); }
+.brand .sub { font-size: .78rem; letter-spacing: .12em; color: var(--accent); margin: 0 0 2px; }
 .head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
 .take { color: var(--muted); margin: 2px 0 0; }
 .sync { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .85rem; color: var(--muted); }
@@ -57,10 +56,11 @@ button, select, input, textarea { font: inherit; color: var(--fg); }
 .chart { width: 100%; min-height: 220px; }
 .chart text { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
 .hbars { display: flex; flex-direction: column; gap: 6px; }
-.hrow { display: grid; grid-template-columns: 4.6rem 1fr auto; gap: 8px; align-items: center; background: none; border: 0; padding: 3px 0; cursor: pointer; text-align: left; width: 100%; }
+.hrow { display: grid; grid-template-columns: 6.6rem 1fr auto; gap: 8px; align-items: center; background: none; border: 0; padding: 3px 0; cursor: pointer; text-align: left; width: 100%; }
 .hrow .lab { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hrow .track { height: .7rem; background: var(--grid); border-radius: 999px; overflow: hidden; }
-.hrow .fill { height: 100%; border-radius: 999px; }
+.hrow .track { display: block; }
+.hrow .fill { display: block; height: 100%; border-radius: 999px; }
 .hrow .val { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hrow.on .lab { font-weight: 700; }
 .hrow.dim { opacity: .4; }
@@ -121,9 +121,13 @@ dialog::backdrop { background: rgba(0,0,0,.4); }
 <body>
 <div class="wrap">
   <div class="head">
-    <div>
-      <h1>嘉特利業績表</h1>
-      <p class="take" id="take">讀取日曆資料中…</p>
+    <div class="brand">
+      <img class="logo" src="logo.png" alt="嘉特利職人清潔">
+      <div>
+        <p class="sub">嘉特利職人清潔</p>
+        <h1>業績表</h1>
+        <p class="take" id="take">讀取日曆資料中…</p>
+      </div>
     </div>
     <div class="sync" id="sync"><span><span class="dot"></span><span id="synced">—</span></span>
       <button class="btn small" id="reload" type="button">重新整理</button>
