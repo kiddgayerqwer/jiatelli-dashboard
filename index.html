@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>嘉特利業績表</title>
+<style>
+/* Layout: one wide work column — sync bar, filters, four figures, daily chart, three breakdowns, then the order table. */
+:root {
+  --bg: #f4f6f4; --panel: #ffffff; --fg: #1c231f; --muted: #5b6760; --line: #dce2dd; --grid: #e8ece9;
+  --accent: #1f7a5c; --accent-fg: #ffffff; --accent-soft: #e2f0e9;
+  --c1: #1f7a5c; --c2: #2f6fb0; --c3: #b0662f;
+  --warn: #9a5a00; --warn-soft: #fbefdc; --bad: #b3261e; --bad-soft: #fbe5e3; --ok: #1f7a5c;
+  --font: "Microsoft JhengHei UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #111513; --panel: #1a1f1c; --fg: #e7ebe8; --muted: #a1ada6; --line: #2d3530; --grid: #252c28;
+  --accent: #5cc49b; --accent-fg: #0c1912; --accent-soft: #1c3228;
+  --c1: #5cc49b; --c2: #6fa8e0; --c3: #e09a63;
+  --warn: #f0b45a; --warn-soft: #33281a; --bad: #ff8a80; --bad-soft: #3a1f1d; --ok: #5cc49b;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 78rem; margin-inline: auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 1.6rem; margin: 0; font-weight: 700; }
+h2 { font-size: 1.02rem; margin: 0; font-weight: 700; }
+.head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.take { color: var(--muted); margin: 2px 0 0; }
+.sync { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .85rem; color: var(--muted); }
+.sync .dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--ok); display: inline-block; margin-right: 4px; }
+.sync.bad .dot { background: var(--bad); }
+.sync.bad { color: var(--bad); }
+button, select, input, textarea { font: inherit; color: var(--fg); }
+.btn { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; min-height: 2.25rem; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.btn.small { min-height: 1.9rem; padding: 2px 12px; font-size: .85rem; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { background: var(--warn-soft); color: var(--warn); border-radius: var(--radius); padding: 12px 16px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice b { display: block; margin-bottom: 4px; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font-size: .78rem; color: var(--muted); }
+.filters select, .filters input, .field input, .field select, .field textarea {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; min-height: 2.25rem; }
+.filters .grow { flex: 1 1 12rem; }
+.filters .grow input { width: 100%; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
+.kpi .lbl { font-size: .8rem; color: var(--muted); }
+.kpi .num { font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.kpi .sub { font-size: .8rem; color: var(--muted); }
+.note { font-size: .8rem; color: var(--muted); margin: 2px 0 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 12px; }
+.chart { width: 100%; min-height: 220px; }
+.chart text { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.hbars { display: flex; flex-direction: column; gap: 6px; }
+.hrow { display: grid; grid-template-columns: 4.6rem 1fr auto; gap: 8px; align-items: center; background: none; border: 0; padding: 3px 0; cursor: pointer; text-align: left; width: 100%; }
+.hrow .lab { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrow .track { height: .7rem; background: var(--grid); border-radius: 999px; overflow: hidden; }
+.hrow .fill { height: 100%; border-radius: 999px; }
+.hrow .val { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hrow.on .lab { font-weight: 700; }
+.hrow.dim { opacity: .4; }
+.tablebox { max-height: 34rem; overflow: auto; border-top: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { position: sticky; top: 0; z-index: 1; background: var(--panel); text-align: left; font-size: .78rem; color: var(--muted); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th button { all: unset; cursor: pointer; }
+th[aria-sort=ascending] button::after { content: ' ▲'; }
+th[aria-sort=descending] button::after { content: ' ▼'; }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.r, th.r { text-align: right; }
+td.nowrap { white-space: nowrap; }
+td.txt { min-width: 16rem; font-size: .82rem; color: var(--muted); white-space: pre-line; }
+.conn .row2 { margin-top: 4px; }
+.acts .hint.left { margin-right: auto; align-self: center; }
+.tag { display: inline-block; font-size: .72rem; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.mute { background: var(--grid); color: var(--muted); }
+tr.excluded td { opacity: .45; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.count { font-size: .82rem; color: var(--muted); }
+dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--panel); color: var(--fg); width: min(40rem, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(0,0,0,.4); }
+.dlg { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-height: 85vh; overflow: auto; }
+.dlg textarea { min-height: 7rem; resize: vertical; line-height: 1.5; font-size: .9rem; }
+.dlg .orig { font-size: .82rem; color: var(--muted); white-space: pre-line; background: var(--bg); border-radius: 8px; padding: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); }
+.field input, .field select, .field textarea { width: 100%; }
+.row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 10px; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.checks label { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+.checks label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.checks input { accent-color: var(--accent); margin: 0; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.acts .left { margin-right: auto; }
+.hint { font-size: .78rem; color: var(--muted); margin: 0; }
+[hidden] { display: none !important; }
+@media (max-width: 40rem) { .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>嘉特利業績表</h1>
+      <p class="take" id="take">讀取日曆資料中…</p>
+    </div>
+    <div class="sync" id="sync"><span><span class="dot"></span><span id="synced">—</span></span>
+      <button class="btn small" id="reload" type="button">重新整理</button>
+      <button class="btn small" id="conn-open" type="button" hidden>連線設定</button>
+    </div>
+  </div>
+
+  <div class="notice bad" id="nodata" hidden>
+    <b>還沒有日曆資料</b>
+    請先在這個資料夾裡雙擊「第一次設定.bat」，貼上日曆的 iCal 私人網址。設定完成後回到這裡按「重新整理」。
+  </div>
+  <section class="card conn" id="conn" hidden>
+    <h2>連線到業務排程日曆</h2>
+    <p class="note">填入 Apps Script「網頁應用程式」網址與金鑰。只會存在這台裝置的瀏覽器裡，不會上傳到網站。金鑰在桌面「嘉特利業績\app\token.txt」。</p>
+    <div class="row2">
+      <label class="field" for="conn-url">網頁應用程式網址<input id="conn-url" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+      <label class="field" for="conn-token">金鑰<input id="conn-token" type="password" autocomplete="off"></label>
+    </div>
+    <div class="acts" style="margin-top:10px">
+      <span class="hint left" id="conn-msg"></span>
+      <button class="btn" type="button" id="conn-forget">清除這台裝置的連線</button>
+      <button class="btn primary" type="button" id="conn-save">連線</button>
+    </div>
+  </section>
+  <div class="notice" id="syncwarn" hidden></div>
+
+  <div class="filters">
+    <label for="f-month">月份<select id="f-month"></select></label>
+    <label for="f-item">服務項目<select id="f-item"></select></label>
+    <label for="f-area">地區<select id="f-area"></select></label>
+    <label for="f-cust">客戶<select id="f-cust"></select></label>
+    <button class="btn" id="reset" type="button">清除篩選</button>
+  </div>
+
+  <section class="kpis">
+    <div class="card kpi"><div class="lbl">業績總額</div><div class="num" id="k-total">—</div><div class="sub" id="k-total-sub"></div></div>
+    <div class="card kpi"><div class="lbl">訂單數</div><div class="num" id="k-count">—</div><div class="sub" id="k-count-sub"></div></div>
+    <div class="card kpi"><div class="lbl">平均客單價</div><div class="num" id="k-avg">—</div><div class="sub" id="k-avg-sub"></div></div>
+    <div class="card kpi"><div class="lbl">舊客戶業績</div><div class="num" id="k-old">—</div><div class="sub" id="k-old-sub"></div></div>
+  </section>
+
+  <section class="card">
+    <h2 id="chart-title">每日業績</h2>
+    <p class="note">深色為已完成，淺色為尚未到的預約。滑鼠停在長條上可看金額。</p>
+    <div id="chart"></div>
+  </section>
+
+  <div class="grid3">
+    <section class="card"><h2>依服務項目</h2><p class="note">一筆含多個項目時，金額計入每個項目。點一列可篩選。</p><div class="hbars" id="by-item"></div></section>
+    <section class="card"><h2>依地區</h2><p class="note">由服務地址判斷台中市行政區。點一列可篩選。</p><div class="hbars" id="by-area"></div></section>
+    <section class="card"><h2>新客戶與舊客戶</h2><p class="note">標題有「老客人／舊客／回購」或在編輯中設為舊客戶。</p><div class="hbars" id="by-cust"></div></section>
+  </div>
+
+  <section class="card">
+    <div class="tools">
+      <h2>訂單明細</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="export-csv" type="button">匯出 Excel（CSV）</button>
+        <button class="btn small" id="export-edits" type="button">備份我的修改</button>
+        <button class="btn small" id="import-edits" type="button">還原修改</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    <div class="filters" style="margin-bottom:10px">
+      <label class="grow" for="search">搜尋<input id="search" type="search" placeholder="客戶、電話、地址、項目…"></label>
+    </div>
+    <p class="note" id="table-note"></p>
+    <div class="tablebox">
+      <table>
+        <thead><tr>
+          <th data-k="day"><button type="button">日期</button></th>
+          <th data-k="time" class="hide-sm"><button type="button">時間</button></th>
+          <th data-k="items"><button type="button">項目</button></th>
+          <th data-k="area"><button type="button">地區</button></th>
+          <th data-k="old" class="hide-sm"><button type="button">客戶</button></th>
+          <th data-k="price"><button type="button">計價</button></th>
+          <th data-k="amount" class="r"><button type="button">金額</button></th>
+          <th data-k="note" class="hide-sm"><button type="button">內容</button></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" method="dialog" id="dlg-form">
+    <h2 id="dlg-title">編輯訂單</h2>
+    <label class="field" for="dlg-summary">行程標題（日曆上看到的那一段）<textarea id="dlg-summary" rows="5"></textarea></label>
+    <div class="field">服務項目<div class="checks" id="dlg-items"></div></div>
+    <div class="row2">
+      <label class="field" for="dlg-area">地區<select id="dlg-area"></select></label>
+      <label class="field" for="dlg-cust">客戶類型<select id="dlg-cust"><option>新客戶</option><option>舊客戶</option></select></label>
+    </div>
+    <div class="row2">
+      <label class="field" for="dlg-len">量測長度（公分）<input id="dlg-len" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label class="field" for="dlg-rate">單價（元／公分）<input id="dlg-rate" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label class="field" for="dlg-amt">實收金額（元）<input id="dlg-amt" type="number" min="0" step="1" inputmode="numeric"></label>
+    </div>
+    <p class="hint" id="dlg-hint"></p>
+    <div class="checks"><label><input type="checkbox" id="dlg-amt-title" checked> 把實收金額寫進標題（最後一行「實收：○○元」）</label></div>
+    <label class="field" for="dlg-memo">備註<input id="dlg-memo" type="text" placeholder="例：L 型沙發含腳椅"></label>
+    <div class="checks"><label><input type="checkbox" id="dlg-excl"> 不列入業績（取消、改期、非訂單）</label></div>
+    <p class="hint" id="dlg-where"></p>
+    <div class="acts">
+      <button class="btn left" type="button" id="dlg-clear">清除修改</button>
+      <button class="btn" type="button" id="dlg-cancel">取消</button>
+      <button class="btn primary" type="button" id="dlg-save">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ---------- 讀取設定 ---------- */
+const ITEM_LIST = ['冷氣', '洗衣機', '床墊除蟎', '沙發', '地板', '其他'];
+const ITEM_RE = [['冷氣', /冷氣/], ['洗衣機', /洗衣服?機/], ['床墊除蟎', /床墊|除塵蟎|床|抽洗|枕頭|棉被|單人|雙人/], ['沙發', /沙發/], ['地板', /地板/]];
+const AREAS3 = ['西屯', '南屯', '北屯', '豐原', '東勢', '大甲', '清水', '沙鹿', '梧棲', '后里', '神岡', '潭子', '大雅', '新社', '石岡', '外埔', '大安', '烏日', '大肚', '龍井', '霧峰', '太平', '大里', '和平'];
+const CITY = ['中區', '東區', '南區', '西區', '北區'];
+const AREA_OPTIONS = [...CITY, ...AREAS3.map((a) => a + '區'), '未標示'];
+const EDIT_KEY = 'jiatelli-edits-v1';
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+const money = (n) => 'NT$' + fmt(n);
+const pad2 = (n) => String(n).padStart(2, '0');
+const todayTW = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
+/* ---------- 本機修改 ---------- */
+function loadEdits() { try { return JSON.parse(localStorage.getItem(EDIT_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function saveEdits() { try { localStorage.setItem(EDIT_KEY, JSON.stringify(edits)); return true; } catch (e) { return false; } }
+let edits = loadEdits();
+
+/* ---------- 解析日曆（iCal） ---------- */
+function unesc(v) { return v.replace(/\\([\\;,nN])/g, (m, c) => (c === 'n' || c === 'N' ? '\n' : c)); }
+function icsTime(prop) {
+  if (!prop) return null;
+  const v = prop.val, p = prop.p;
+  const m = v.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/);
+  if (!m) return null;
+  if (!m[4] || p.VALUE === 'DATE') return { day: `${m[1]}-${m[2]}-${m[3]}`, time: '', allDay: true };
+  if (m[7]) {
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + 8 * 3600 * 1000);
+    return { day: `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`, time: `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`, allDay: false };
+  }
+  return { day: `${m[1]}-${m[2]}-${m[3]}`, time: `${m[4]}:${m[5]}`, allDay: false };
+}
+function parseICS(text) {
+  const lines = String(text || '').replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
+  const out = new Map();
+  let cur = null, depth = 0;
+  for (const line of lines) {
+    if (line === 'BEGIN:VEVENT') { cur = {}; depth = 0; continue; }
+    if (!cur) continue;
+    if (line.startsWith('BEGIN:')) { depth++; continue; }
+    if (line.startsWith('END:') && line !== 'END:VEVENT') { depth--; continue; }
+    if (line === 'END:VEVENT') {
+      if (cur.STATUS !== 'CANCELLED' && cur.DTSTART) {
+        const key = (cur.UID || Math.random()) + (cur['RECURRENCE-ID'] ? '|' + cur['RECURRENCE-ID'] : '');
+        out.set(key, cur);
+      }
+      cur = null; continue;
+    }
+    if (depth > 0) continue;
+    const i = line.indexOf(':');
+    if (i < 0) continue;
+    const parts = line.slice(0, i).split(';');
+    const name = parts[0].toUpperCase();
+    const p = {};
+    for (const s of parts.slice(1)) { const j = s.indexOf('='); if (j > 0) p[s.slice(0, j).toUpperCase()] = s.slice(j + 1); }
+    const val = line.slice(i + 1);
+    if (name === 'SUMMARY' || name === 'DESCRIPTION') cur[name] = unesc(val);
+    else if (name === 'DTSTART') cur.DTSTART = { val, p };
+    else if (name === 'UID' || name === 'STATUS' || name === 'RECURRENCE-ID') cur[name] = val;
+  }
+  const evs = [];
+  for (const [key, e] of out) {
+    const t = icsTime(e.DTSTART);
+    if (!t) continue;
+    evs.push({ id: key, summary: e.SUMMARY || '', description: e.DESCRIPTION || '', ...t });
+  }
+  return evs;
+}
+
+/* ---------- 由行程判斷訂單 ---------- */
+const PAID_LINE = /\n?[ \t]*實收[:：]\s*\d+\s*元?[ \t]*/g;
+function toOrder(e) {
+  const ed0 = edits[e.id] || null;
+  const raw = String((ed0 && typeof ed0.summary === 'string' && ed0.summary) || e.summary || '');
+  const desc = String(e.description || '');
+  const at = desc.search(/【嘉特利(訂單|結帳)】/);
+  const block = at >= 0 ? desc.slice(at) : '';
+  const get = (k) => { const m = block.match(new RegExp(k + '[:：]\\s*(.*)')); return m ? m[1].trim() : ''; };
+  const ed = edits[e.id] || null;
+
+  let items = ITEM_RE.filter(([, re]) => re.test(raw)).map(([n]) => n);
+  const blockItems = get('服務項目').split(/[、,，\s]+/).filter((x) => ITEM_LIST.includes(x));
+  if (!items.length && !/清潔|清洗/.test(raw) && !blockItems.length && !ed) return null;
+  if (blockItems.length) items = blockItems;
+  if (!items.length) items.push('其他');
+
+  const titlePaid = raw.match(/實收[:：]\s*(\d+)/);
+  const text = raw.replace(PAID_LINE, '\n').replace(/(?<!\d)0\d{1,3}-?\d{3,4}-?\d{3,4}(?!\d)/g, '');
+  const deal = text.match(/優惠\s*\$?(\d+)/), total = text.match(/總價\s*\$?(\d+)/);
+  let auto = 0;
+  if (deal) auto = Number(deal[1]);
+  else if (total) auto = Number(total[1]);
+  else {
+    const t = text.replace(/\d+\s*[*xX×]\s*\d+\s*=/g, '=');
+    for (const m of t.matchAll(/(?<![\d路街巷弄段號區樓統編+\-])(\d{3,6})(?![\d號巷弄樓路段街公萬台張點分之])/g)) auto += Number(m[1]);
+  }
+  const onsite = /現場量|公分|現場評估|現場算|現場報價|評估報價/.test(raw);
+  const a3 = AREAS3.find((a) => text.includes(a));
+  let area = get('地區') || (a3 ? a3 + '區' : (CITY.find((a) => text.includes(a)) || '未標示'));
+  const bOld = get('客戶類型');
+  let old = /^(舊客戶|新客戶)$/.test(bOld) ? bOld : (/老客|舊客|回購|回頭客|熟客/.test(raw) ? '舊客戶' : '新客戶');
+  const bPaid = get('實收金額');
+  let paid = /^\d+$/.test(bPaid) ? Number(bPaid) : (titlePaid ? Number(titlePaid[1]) : null);
+  let len = '', rate = '', memo = get('結帳備註'), excluded = get('不列入業績') === '是';
+  const lm = block.match(/量測[:：]\s*(\d+(?:\.\d+)?)\s*公分\s*[×x*]\s*(\d+(?:\.\d+)?)/);
+  if (lm) { len = lm[1]; rate = lm[2]; }
+
+  if (ed) {
+    if (ed.items && ed.items.length) items = ed.items;
+    if (ed.area) area = ed.area;
+    if (ed.old) old = ed.old;
+    if (ed.amount !== undefined && ed.amount !== null && ed.amount !== '') paid = Number(ed.amount);
+    if (ed.len !== undefined) len = ed.len;
+    if (ed.rate !== undefined) rate = ed.rate;
+    if (ed.memo !== undefined) memo = ed.memo;
+    excluded = !!ed.excluded;
+  }
+  const amount = excluded ? 0 : (paid !== null ? paid : auto);
+  const price = excluded ? '不列入' : (paid !== null ? '實收' : (auto === 0 || onsite ? '待量測報價' : '標題判斷'));
+  return {
+    id: e.id, day: e.day, time: e.allDay ? '全天' : e.time,
+    items: items.join('、'), itemList: items, area, old, amount, auto, paid, onsite, price, excluded,
+    len, rate, memo, edited: !!ed,
+    summary: raw,
+    note: raw.replace(/^\s*\d{1,2}月\d{1,2}號\s*/, '').replace(/\s*\n\s*/g, '\n').trim(),
+  };
+}
+
+/* ---------- 狀態 ---------- */
+let events = [], orders = [], sortKey = 'day', sortAsc = true;
+const F = { month: null, item: '', area: '', cust: '' };
+
+function rebuild() { orders = events.map(toOrder).filter(Boolean); }
+
+function loadScript(src) {
+  return new Promise((res) => {
+    const s = document.createElement('script');
+    s.src = src + '?t=' + Date.now();
+    s.onload = () => { s.remove(); res(true); };
+    s.onerror = () => { s.remove(); res(false); };
+    document.head.append(s);
+  });
+}
+
+/* ---------- 線上連線（GitHub 網頁版用；桌面版沒有資料時也會用） ---------- */
+const ONLINE = /^https?:$/.test(location.protocol);
+const CONN_KEY = 'jiatelli-connection-v1';
+function getConn() { try { const c = JSON.parse(localStorage.getItem(CONN_KEY) || 'null'); return c && c.url && c.token ? c : null; } catch (e) { return null; } }
+function setConn(c) { try { if (c) localStorage.setItem(CONN_KEY, JSON.stringify(c)); else localStorage.removeItem(CONN_KEY); } catch (e) {} }
+async function fetchFeed(conn) {
+  const d = new Date();
+  const ymd = (x) => `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`;
+  const from = new Date(d.getFullYear() - 2, d.getMonth(), 1), to = new Date(d.getFullYear() + 1, d.getMonth(), 1);
+  const u = conn.url + '?token=' + encodeURIComponent(conn.token) + '&from=' + ymd(from) + '&to=' + ymd(to);
+  let data;
+  try { data = await (await fetch(u, { redirect: 'follow' })).json(); }
+  catch (e) { throw new Error('連不到日曆連線程式。請確認網址正確、Apps Script 部署時「誰可以存取」選「所有人」，以及網路正常。'); }
+  if (!data || !data.ok) throw new Error((data && data.error) || '日曆連線程式沒有回傳資料。');
+  return data;
+}
+
+async function loadData() {
+  window.JT_ICS = undefined; window.JT_FEED = undefined; window.JT_SYNCED = undefined; window.JT_STATUS = undefined; window.JT_WRITE = undefined;
+  let live = false, onlineErr = '';
+  if (!ONLINE) {
+    await loadScript('data/webapp.js');
+    live = await loadScript('data/events.js') && window.JT_FEED && window.JT_FEED.ok;
+    if (!live) await loadScript('data/calendar.js');
+    await loadScript('data/status.js');
+  }
+  const conn = getConn();
+  if (!live && !window.JT_ICS && conn) {
+    try {
+      window.JT_FEED = await fetchFeed(conn);
+      window.JT_SYNCED = window.JT_FEED.at;
+      window.JT_WRITE = conn;
+      live = true;
+    } catch (e) { onlineErr = e.message; }
+  }
+  $('conn-open').hidden = !ONLINE && !conn;
+  $('conn').hidden = live || !!window.JT_ICS || !(ONLINE || conn);
+  if (ONLINE && !live && conn) { $('conn-url').value = conn.url; $('conn-token').value = conn.token; }
+  $('conn-msg').textContent = onlineErr;
+  $('nodata').hidden = ONLINE || !!(live || window.JT_ICS) || !!conn;
+  const st = window.JT_STATUS;
+  const warn = $('syncwarn');
+  if (st && st.ok === false) {
+    warn.hidden = false;
+    warn.textContent = `最近一次自動同步失敗（${st.at}）：${st.msg} 表格顯示的是上次成功同步的資料。`;
+    $('sync').classList.add('bad');
+  } else { warn.hidden = true; $('sync').classList.remove('bad'); }
+  $('synced').textContent = window.JT_SYNCED ? (ONLINE || conn && live && !window.JT_STATUS ? '即時讀取 ' : '最後同步 ') + window.JT_SYNCED : (ONLINE ? '尚未連線' : '尚未同步');
+  events = live ? window.JT_FEED.events.map((e) => ({ id: e.id, summary: e.summary || '', description: e.description || '', day: e.day, time: e.time || '', allDay: !!e.allDay }))
+    : (window.JT_ICS ? parseICS(window.JT_ICS) : []);
+  if (live && window.JT_SYNCED) {
+    // 已寫回、而且日曆在那之後同步過的修改，以日曆為準，不再保留本機副本
+    const syncedAt = new Date(String(window.JT_SYNCED).replace(' ', 'T') + ':00+08:00').getTime();
+    let dropped = false;
+    for (const [id, ed] of Object.entries(edits)) if (ed.pushed && new Date(ed.pushed).getTime() < syncedAt - 60000) { delete edits[id]; dropped = true; }
+    if (dropped) saveEdits();
+  }
+  rebuild();
+  draw();
+  pushPending();
+}
+
+/* ---------- 畫面 ---------- */
+function fillSelect(sel, opts, val) {
+  sel.replaceChildren(...opts.map(([v, l]) => new Option(l, v)));
+  sel.value = opts.some(([v]) => v === val) ? val : opts[0][0];
+}
+
+function draw() {
+  const today = todayTW();
+  const months = [...new Set(orders.map((o) => o.day.slice(0, 7)))].sort().reverse();
+  if (F.month === null) F.month = months.includes(today.slice(0, 7)) ? today.slice(0, 7) : (months[0] || '');
+  fillSelect($('f-month'), [...months.map((m) => [m, `${m.slice(0, 4)} 年 ${+m.slice(5)} 月`]), ['all', '全部月份']], F.month);
+  F.month = $('f-month').value;
+  fillSelect($('f-item'), [['', '全部項目'], ...ITEM_LIST.map((x) => [x, x])], F.item);
+  const areas = [...new Set(orders.map((o) => o.area))].sort((a, b) => (a === '未標示') - (b === '未標示') || a.localeCompare(b, 'zh-Hant'));
+  fillSelect($('f-area'), [['', '全部地區'], ...areas.map((a) => [a, a])], F.area);
+  fillSelect($('f-cust'), [['', '全部客戶'], ['舊客戶', '舊客戶'], ['新客戶', '新客戶']], F.cust);
+
+  const inMonth = orders.filter((o) => F.month === 'all' || o.day.startsWith(F.month));
+  const byItem = (o) => !F.item || o.itemList.includes(F.item);
+  const byArea = (o) => !F.area || o.area === F.area;
+  const byCust = (o) => !F.cust || o.old === F.cust;
+  const rows = inMonth.filter((o) => byItem(o) && byArea(o) && byCust(o));
+  const counted = rows.filter((o) => !o.excluded);
+
+  const sum = counted.reduce((s, o) => s + o.amount, 0);
+  const done = counted.filter((o) => o.day < today);
+  const doneSum = done.reduce((s, o) => s + o.amount, 0);
+  const priced = counted.filter((o) => o.amount > 0);
+  const oldSum = counted.filter((o) => o.old === '舊客戶').reduce((s, o) => s + o.amount, 0);
+  const pending = counted.filter((o) => o.price === '待量測報價').length;
+  const label = F.month === 'all' ? '全部月份' : `${+F.month.slice(5)} 月`;
+  const filtered = F.item || F.area || F.cust;
+
+  $('k-total').textContent = money(sum);
+  $('k-total-sub').textContent = `已完成 ${money(doneSum)} · 待服務 ${money(sum - doneSum)}`;
+  $('k-count').textContent = fmt(counted.length);
+  $('k-count-sub').textContent = `已完成 ${done.length} 筆 · 待服務 ${counted.length - done.length} 筆`;
+  $('k-avg').textContent = priced.length ? money(sum / priced.length) : '—';
+  $('k-avg-sub').textContent = pending ? `以有金額的 ${priced.length} 筆計，${pending} 筆待報價` : `以 ${priced.length} 筆計`;
+  $('k-old').textContent = money(oldSum);
+  $('k-old-sub').textContent = sum ? `佔業績 ${Math.round((oldSum / sum) * 100)}%` : '';
+  $('take').textContent = !events.length ? '還沒有日曆資料。' : counted.length
+    ? `${label}${filtered ? '（已篩選）' : ''}共 ${counted.length} 筆訂單、業績 ${money(sum)}；已完成 ${done.length} 筆，還有 ${counted.length - done.length} 筆預約。${pending ? `${pending} 筆待量測報價。` : ''}`
+    : `${label}${filtered ? '在目前篩選下' : ''}沒有訂單。`;
+
+  drawChart(counted, today);
+
+  const group = (list, keys) => {
+    const m = new Map();
+    for (const o of list) for (const k of keys(o)) { const g = m.get(k) || { key: k, sum: 0, n: 0 }; g.sum += o.amount; g.n++; m.set(k, g); }
+    return [...m.values()].sort((a, b) => b.sum - a.sum || b.n - a.n);
+  };
+  const base = inMonth.filter((o) => !o.excluded);
+  hbars($('by-item'), group(base.filter((o) => byArea(o) && byCust(o)), (o) => o.itemList), F.item, (v) => { F.item = v; draw(); }, 'var(--c1)');
+  hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)');
+  hbars($('by-cust'), group(base.filter((o) => byItem(o) && byArea(o)), (o) => [o.old]), F.cust, (v) => { F.cust = v; draw(); }, 'var(--c3)');
+
+  drawTable(rows, today);
+}
+
+function hbars(box, data, selected, pick, color) {
+  box.replaceChildren();
+  const max = Math.max(1, ...data.map((d) => d.sum));
+  for (const d of data) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'hrow' + (selected ? (selected === d.key ? ' on' : ' dim') : '');
+    const lab = document.createElement('span'); lab.className = 'lab'; lab.textContent = d.key;
+    const tr = document.createElement('span'); tr.className = 'track';
+    const fi = document.createElement('span'); fi.className = 'fill'; fi.style.width = (d.sum / max) * 100 + '%'; fi.style.background = color;
+    tr.append(fi);
+    const v = document.createElement('span'); v.className = 'val'; v.textContent = `${money(d.sum)} · ${d.n} 筆`;
+    b.append(lab, tr, v);
+    b.addEventListener('click', () => pick(selected === d.key ? '' : d.key));
+    box.append(b);
+  }
+  if (!data.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = '沒有資料'; box.append(p); }
+}
+
+const SVG = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs, text) { const n = document.createElementNS(SVG, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; return n; }
+function niceMax(v) { if (v <= 0) return 1000; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+const short = (n) => (n >= 10000 ? (+(n / 10000).toFixed(1)) + '萬' : fmt(n));
+
+function drawChart(list, today) {
+  const box = $('chart');
+  box.replaceChildren();
+  let buckets;
+  if (F.month === 'all') {
+    $('chart-title').textContent = '每月業績';
+    const ms = [...new Set(list.map((o) => o.day.slice(0, 7)))].sort();
+    buckets = ms.map((m) => ({ key: m, label: `${+m.slice(5)}月`, full: `${m.slice(0, 4)} 年 ${+m.slice(5)} 月`, past: m < today.slice(0, 7) }));
+    buckets.forEach((b) => { const v = list.filter((o) => o.day.startsWith(b.key)); b.sum = v.reduce((s, o) => s + o.amount, 0); b.n = v.length; });
+  } else {
+    $('chart-title').textContent = '每日業績';
+    if (!F.month) return;
+    const [y, m] = F.month.split('-').map(Number);
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    buckets = [];
+    for (let d = 1; d <= days; d++) {
+      const key = `${F.month}-${pad2(d)}`;
+      const v = list.filter((o) => o.day === key);
+      buckets.push({ key, label: String(d), full: `${m} 月 ${d} 日`, past: key < today, sum: v.reduce((s, o) => s + o.amount, 0), n: v.length });
+    }
+  }
+  if (!buckets.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = '沒有資料'; box.append(p); return; }
+  const W = Math.max(320, box.clientWidth || 800), H = 220, top = 10, bottom = 24;
+  const max = niceMax(Math.max(...buckets.map((b) => b.sum)));
+  const ticks = [0, max / 4, max / 2, (max * 3) / 4, max];
+  const left = 12 + Math.max(...ticks.map((t) => short(t).length)) * 7;
+  const svg = svgEl('svg', { width: '100%', viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': $('chart-title').textContent });
+  const y = (v) => top + (H - top - bottom) * (1 - v / max);
+  for (const t of ticks) {
+    svg.append(svgEl('line', { x1: left, x2: W - 4, y1: y(t), y2: y(t), stroke: 'var(--grid)' }));
+    svg.append(svgEl('text', { x: left - 6, y: y(t) + 4, 'text-anchor': 'end' }, short(t)));
+  }
+  const step = (W - left - 4) / buckets.length;
+  const bw = Math.max(2, step * 0.7);
+  const every = Math.max(1, Math.ceil(buckets.length / Math.floor((W - left) / 26)));
+  buckets.forEach((b, i) => {
+    const x = left + i * step + (step - bw) / 2;
+    if (b.sum > 0) {
+      const r = svgEl('rect', { x, width: bw, y: y(b.sum), height: Math.max(1, y(0) - y(b.sum)), rx: Math.min(4, bw / 2), fill: 'var(--c1)', opacity: b.past ? 1 : 0.4 });
+      r.append(svgEl('title', {}, `${b.full}${b.past ? '' : '（預約）'}：${money(b.sum)}，${b.n} 筆`));
+      svg.append(r);
+    }
+    if (i % every === 0) svg.append(svgEl('text', { x: x + bw / 2, y: H - 6, 'text-anchor': 'middle' }, b.label));
+  });
+  box.append(svg);
+}
+
+function drawTable(rows, today) {
+  const q = $('search').value.trim();
+  const shown = rows.filter((o) => !q || [o.day, o.items, o.area, o.old, o.summary, o.memo].join(' ').includes(q));
+  shown.sort((a, b) => {
+    const va = a[sortKey], vb = b[sortKey];
+    const c = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'zh-Hant');
+    return (sortAsc ? c : -c) || (a.day + a.time).localeCompare(b.day + b.time);
+  });
+  document.querySelectorAll('th[data-k]').forEach((th) => th.setAttribute('aria-sort', th.dataset.k === sortKey ? (sortAsc ? 'ascending' : 'descending') : 'none'));
+  const body = $('tbody');
+  body.replaceChildren(...shown.map((o) => {
+    const tr = document.createElement('tr');
+    if (o.excluded) tr.className = 'excluded';
+    const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
+    const d = td(o.day.slice(5).replace('-', '/'), 'nowrap');
+    if (o.day >= today) { d.append(' '); const t = document.createElement('span'); t.className = 'tag warn'; t.textContent = '預約'; d.append(t); }
+    td(o.time, 'nowrap hide-sm');
+    td(o.items);
+    td(o.area, 'nowrap');
+    td(o.old, 'nowrap hide-sm');
+    const pc = td('', 'nowrap');
+    const tag = document.createElement('span');
+    tag.className = 'tag' + (o.price === '待量測報價' ? ' warn' : (o.price === '標題判斷' || o.price === '不列入' ? ' mute' : ''));
+    const ed = edits[o.id];
+    tag.textContent = o.price + (ed ? (ed.pushed ? '・已改' : (canWrite() ? '・未上傳' : '・已改（本機）')) : '');
+    pc.append(tag);
+    td(fmt(o.amount), 'r');
+    td(o.note + (o.memo ? '\n備註：' + o.memo : ''), 'txt hide-sm');
+    const ac = td('', 'nowrap');
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'btn small'; btn.textContent = '編輯';
+    btn.addEventListener('click', () => openEdit(o));
+    ac.append(btn);
+    return tr;
+  }));
+  const waiting = Object.values(edits).filter((e) => !e.pushed).length;
+  $('table-note').textContent = `顯示 ${shown.length} 筆。金額依序採用：編輯過的實收金額 → 標題的優惠價或總價 → 標題中的價格加總。`
+    + (canWrite() ? (waiting ? `有 ${waiting} 筆修改還沒寫回日曆，連上網路後會自動重試。` : '修改會自動寫回 Google 日曆。')
+      : (Object.keys(edits).length ? `有 ${Object.keys(edits).length} 筆修改只存在這台電腦（尚未設定寫回日曆）。` : ''));
+}
+
+/* ---------- 編輯 ---------- */
+let editing = null;
+const dlg = $('dlg');
+ITEM_LIST.forEach((n) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = 'checkbox'; c.value = n; l.append(c, ' ' + n); $('dlg-items').append(l); });
+AREA_OPTIONS.forEach((a) => $('dlg-area').append(new Option(a, a)));
+
+function openEdit(o) {
+  editing = o;
+  $('dlg-title').textContent = `編輯訂單　${+o.day.slice(5, 7)}/${+o.day.slice(8)} ${o.time}`;
+  $('dlg-summary').value = o.summary;
+  $('dlg-items').querySelectorAll('input').forEach((c) => { c.checked = o.itemList.includes(c.value); });
+  if (![...$('dlg-area').options].some((op) => op.value === o.area)) $('dlg-area').append(new Option(o.area, o.area));
+  $('dlg-area').value = o.area;
+  $('dlg-cust').value = o.old;
+  const sofa = o.itemList.includes('沙發');
+  $('dlg-len').value = o.len || '';
+  $('dlg-rate').value = o.rate || (sofa ? 10 : '');
+  $('dlg-amt').value = o.paid !== null ? o.paid : '';
+  $('dlg-amt').placeholder = o.auto ? '標題判斷 ' + fmt(o.auto) : '尚未有金額';
+  $('dlg-memo').value = o.memo || '';
+  $('dlg-excl').checked = o.excluded;
+  $('dlg-hint').textContent = '實收金額留空時，沿用標題裡的金額。填量測長度與單價會自動算出實收金額。';
+  $('dlg-clear').hidden = !edits[o.id] && o.price !== '實收' && !o.excluded;
+  $('dlg-where').textContent = canWrite()
+    ? '按「儲存」會寫回 Google 日曆：標題照上面改，分類與金額另記在說明欄。師傅的日曆上也看得到。'
+    : '尚未設定寫回日曆：修改只存在這台電腦。要寫回日曆，請執行資料夾裡的「設定寫回日曆.bat」。';
+  dlg.showModal();
+}
+const recalc = () => { const L = Number($('dlg-len').value), R = Number($('dlg-rate').value); if (L > 0 && R > 0) $('dlg-amt').value = Math.round(L * R); };
+$('dlg-len').addEventListener('input', recalc);
+$('dlg-rate').addEventListener('input', recalc);
+$('dlg-cancel').addEventListener('click', () => dlg.close());
+$('dlg-clear').addEventListener('click', async () => {
+  const id = editing.id;
+  if (canWrite()) {
+    $('dlg-where').textContent = '正在從日曆清除…';
+    const r = await push({ id, clear: true });
+    if (!r.ok) { $('dlg-where').textContent = '清除失敗：' + r.error; return; }
+    const ev = events.find((e) => e.id === id);
+    if (ev) ev.description = String(ev.description).split(/【嘉特利(?:訂單|結帳)】/)[0].trim();
+  }
+  delete edits[id]; saveEdits(); dlg.close(); rebuild(); draw();
+});
+$('dlg-save').addEventListener('click', () => {
+  const items = [...$('dlg-items').querySelectorAll('input:checked')].map((c) => c.value);
+  if (!items.length) { $('dlg-hint').textContent = '請至少勾選一個服務項目。'; return; }
+  const amt = $('dlg-amt').value.trim();
+  if (amt !== '' && !(Number(amt) >= 0)) { $('dlg-hint').textContent = '實收金額要是 0 以上的數字。'; return; }
+  let summary = $('dlg-summary').value.replace(/\r/g, '').replace(/\s+$/, '');
+  if (!summary.trim()) { $('dlg-hint').textContent = '行程標題不能空白。'; return; }
+  if ($('dlg-amt-title').checked && amt !== '') summary = summary.replace(PAID_LINE, '').replace(/\s+$/, '') + '\n實收：' + Math.round(Number(amt)) + '元';
+  edits[editing.id] = {
+    summary: summary !== editing.summary ? summary : undefined,
+    items, area: $('dlg-area').value, old: $('dlg-cust').value,
+    amount: amt === '' ? null : Math.round(Number(amt)),
+    len: $('dlg-len').value, rate: $('dlg-rate').value, memo: $('dlg-memo').value.trim(),
+    excluded: $('dlg-excl').checked, day: editing.day, at: new Date().toISOString(),
+  };
+  if (!saveEdits()) { $('dlg-hint').textContent = '這個瀏覽器不允許儲存，請改用 Chrome 或 Edge 開啟。'; return; }
+  const id = editing.id;
+  dlg.close(); rebuild(); draw();
+  if (canWrite()) pushOne(id);
+});
+
+/* ---------- 寫回 Google 日曆 ---------- */
+const canWrite = () => !!(window.JT_WRITE && window.JT_WRITE.url && window.JT_WRITE.token);
+async function push(payload) {
+  const body = JSON.stringify(Object.assign({ token: window.JT_WRITE.token }, payload));
+  try {
+    const res = await fetch(window.JT_WRITE.url, { method: 'POST', body, redirect: 'follow' });
+    const data = await res.json();
+    return data && data.ok ? { ok: true } : { ok: false, error: (data && data.error) || '日曆沒有回應' };
+  } catch (e) {
+    try {
+      await fetch(window.JT_WRITE.url, { method: 'POST', body, mode: 'no-cors' });
+      return { ok: true, unconfirmed: true };
+    } catch (e2) { return { ok: false, error: '連不到網路' }; }
+  }
+}
+let pushing = false;
+async function pushOne(id) {
+  const ed = edits[id];
+  if (!ed || !canWrite()) return;
+  const payload = { id, changes: { items: ed.items, area: ed.area, old: ed.old, amount: ed.amount, len: ed.len, rate: ed.rate, memo: ed.memo, excluded: ed.excluded } };
+  if (typeof ed.summary === 'string' && ed.summary.trim()) payload.summary = ed.summary;
+  const r = await push(payload);
+  if (edits[id] !== ed) return;
+  if (r.ok) {
+    ed.pushed = new Date().toISOString(); delete ed.pushError;
+    const ev = events.find((x) => x.id === id);
+    if (ev && payload.summary) ev.summary = payload.summary;
+  }
+  else ed.pushError = r.error;
+  saveEdits();
+  draw();
+}
+async function pushPending() {
+  if (pushing || !canWrite()) return;
+  pushing = true;
+  try { for (const id of Object.keys(edits)) if (!edits[id].pushed) await pushOne(id); }
+  finally { pushing = false; }
+}
+
+/* ---------- 匯出、備份 ---------- */
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const csvCell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+$('export-csv').addEventListener('click', () => {
+  const list = orders.filter((o) => F.month === 'all' || o.day.startsWith(F.month))
+    .filter((o) => (!F.item || o.itemList.includes(F.item)) && (!F.area || o.area === F.area) && (!F.cust || o.old === F.cust))
+    .sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+  const head = ['日期', '時間', '服務項目', '地區', '客戶類型', '計價', '金額', '備註', '行程內容'];
+  const lines = [head.map(csvCell).join(',')].concat(list.map((o) => [o.day, o.time, o.items, o.area, o.old, o.price, o.amount, o.memo, o.summary].map(csvCell).join(',')));
+  download(`嘉特利訂單_${F.month === 'all' ? '全部' : F.month}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+});
+$('export-edits').addEventListener('click', () => download(`嘉特利修改備份_${todayTW()}.json`, JSON.stringify(edits, null, 1), 'application/json'));
+$('import-edits').addEventListener('click', () => $('import-file').click());
+$('import-file').addEventListener('change', async () => {
+  const f = $('import-file').files[0];
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error();
+    edits = Object.assign(edits, data); saveEdits(); rebuild(); draw();
+    $('table-note').textContent = `已還原 ${Object.keys(data).length} 筆修改。`;
+  } catch (e) { $('table-note').textContent = '這個檔案不是修改備份，請選「嘉特利修改備份_日期.json」。'; }
+  $('import-file').value = '';
+});
+
+/* ---------- 事件 ---------- */
+$('f-month').addEventListener('change', () => { F.month = $('f-month').value; draw(); });
+$('f-item').addEventListener('change', () => { F.item = $('f-item').value; draw(); });
+$('f-area').addEventListener('change', () => { F.area = $('f-area').value; draw(); });
+$('f-cust').addEventListener('change', () => { F.cust = $('f-cust').value; draw(); });
+$('reset').addEventListener('click', () => { F.item = F.area = F.cust = ''; $('search').value = ''; draw(); });
+$('search').addEventListener('input', () => draw());
+$('reload').addEventListener('click', () => loadData());
+$('conn-open').addEventListener('click', () => {
+  const c = getConn();
+  $('conn-url').value = c ? c.url : ''; $('conn-token').value = c ? c.token : '';
+  $('conn-msg').textContent = '';
+  $('conn').hidden = !$('conn').hidden;
+});
+$('conn-save').addEventListener('click', async () => {
+  const url = $('conn-url').value.trim(), token = $('conn-token').value.trim();
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url)) { $('conn-msg').textContent = '網址要是 Apps Script「網頁應用程式」網址，結尾是 /exec。'; return; }
+  if (!token) { $('conn-msg').textContent = '請填金鑰。'; return; }
+  $('conn-msg').textContent = '正在連線…';
+  try { await fetchFeed({ url, token }); }
+  catch (e) { $('conn-msg').textContent = e.message; return; }
+  setConn({ url, token });
+  $('conn-msg').textContent = '';
+  $('conn').hidden = true;
+  loadData();
+});
+$('conn-forget').addEventListener('click', () => {
+  setConn(null); $('conn-url').value = ''; $('conn-token').value = '';
+  $('conn-msg').textContent = '已清除這台裝置的連線。';
+  if (ONLINE) { events = []; rebuild(); draw(); }
+});
+document.querySelectorAll('th[data-k] button').forEach((b) => b.addEventListener('click', () => {
+  const k = b.parentElement.dataset.k;
+  if (sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = k !== 'amount'; }
+  draw();
+}));
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(draw, 150); });
+setInterval(() => { if (!dlg.open && document.visibilityState === 'visible') loadData(); }, 5 * 60 * 1000);
+loadData();
+</script>
+</body>
+</html>
