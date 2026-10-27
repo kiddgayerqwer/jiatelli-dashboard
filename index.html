@@ -197,6 +197,32 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
 .acts .left { margin-right: auto; }
 .conn .acts { border-top: 0; padding-top: 0; }
 .hint { font-size: .78rem; color: var(--muted); margin: 0; }
+.remind-box { padding: 12px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--panel-2); color: var(--fg); font-size: .84rem; }
+.remind-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 2px; }
+.remind-quick input[type=date] { min-height: 2rem; padding: 2px 10px; width: auto; }
+.remind-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.rdone { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: .82rem; cursor: pointer; }
+.rdone input, .remind-box .rdone input { accent-color: var(--accent); margin: 0; width: auto; min-height: 0; padding: 0; }
+.remind-box .rdone { white-space: nowrap; }
+.cd { display: inline-block; font-size: .7rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; font-family: var(--num); margin-left: 6px; background: var(--accent-soft); color: var(--accent-2); }
+.cd.due { background: var(--warn-soft); color: var(--warn); }
+.cd.over { background: var(--bad-soft); color: var(--bad); }
+.cd.done { background: var(--grid); color: var(--faint); text-decoration: line-through; }
+.remind-badge { border-color: rgba(240, 180, 90, .55) !important; color: var(--warn); }
+.rlist { display: flex; flex-direction: column; gap: 2px; }
+.rrow { display: grid; grid-template-columns: 8.5rem 1fr auto; gap: 12px; align-items: center; padding: 10px; border-radius: var(--radius-sm); }
+.rrow:hover { background: var(--raise); }
+.rrow.due { background: var(--warn-soft); }
+.rrow.over { background: var(--bad-soft); }
+.rrow .big { font-family: var(--num); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.rrow .big small { display: block; font-family: var(--font); font-weight: 400; font-size: .74rem; color: var(--muted); }
+.rrow .who { min-width: 0; }
+.rrow .who b { font-weight: 600; }
+.rrow .who small { color: var(--muted); margin-left: 6px; font-family: var(--num); }
+.rrow .who .nt { display: block; color: var(--muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rrow .ops { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.rrow a.btn { text-decoration: none; display: inline-flex; align-items: center; color: var(--fg); }
+@media (max-width: 40rem) { .rrow { grid-template-columns: 1fr auto; } .rrow .ops { grid-column: 1 / -1; justify-content: flex-start; } }
 [hidden] { display: none !important; }
 
 /* ---- 手機 ---- */
@@ -232,6 +258,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
     </div>
     <div class="sync" id="sync"><span><span class="dot"></span><span id="synced">—</span></span>
       <button class="btn small" id="reload" type="button">重新整理</button>
+      <button class="btn small remind-badge" id="remind-badge" type="button" hidden></button>
       <button class="btn small" id="conn-open" type="button" hidden>連線設定</button>
     </div>
   </div>
@@ -277,6 +304,15 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
     <p class="note" id="chart-note">滑鼠移到長條上可看當天金額與筆數。</p>
     <div class="legend"><span><i style="background:var(--c1)"></i>已完成</span><span><i style="background:var(--c1);opacity:.35"></i>預約（尚未服務）</span></div>
     <div id="chart" class="chartbox"></div>
+  </section>
+
+  <section class="card" id="remind-panel">
+    <div class="tools" style="margin-bottom:4px">
+      <h2>回訪提醒</h2>
+      <label class="rdone"><input type="checkbox" id="r-showdone"> 顯示已聯絡</label>
+    </div>
+    <p class="note">在訂單的「編輯」裡設定「回訪提醒」，這裡會倒數計時；到期前 7 天會變橘色，過期變紅色。</p>
+    <div class="rlist" id="remind-list"></div>
   </section>
 
   <div class="grid2">
@@ -351,6 +387,18 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
     <p class="hint" id="dlg-hint"></p>
     <div class="checks"><label><input type="checkbox" id="dlg-amt-title" checked> 把實收金額寫進標題（最後一行「實收：○○元」）</label></div>
     <label class="field" for="dlg-memo">備註<input id="dlg-memo" type="text" placeholder="例：L 型沙發含腳椅"></label>
+    <div class="field remind-box">回訪提醒（需要之後再聯絡這位客人才設定）
+      <div class="remind-quick">
+        <button class="btn small" type="button" data-m="3">3 個月後</button>
+        <button class="btn small" type="button" data-m="6">半年後</button>
+        <button class="btn small" type="button" data-m="12">1 年後</button>
+        <button class="btn small" type="button" data-m="24">2 年後</button>
+        <input id="dlg-rdate" type="date" min="2020-01-01" max="2040-12-31" aria-label="回訪日期">
+        <button class="btn small" type="button" id="dlg-rclear">不提醒</button>
+      </div>
+      <input id="dlg-rnote" type="text" placeholder="提醒內容，例：客人說明年冷氣要再洗、記得給舊客優惠">
+      <div class="remind-foot"><span class="hint" id="dlg-rcount"></span><label class="rdone"><input type="checkbox" id="dlg-rdone"> 已經聯絡過了</label></div>
+    </div>
     <div class="checks"><label><input type="checkbox" id="dlg-excl"> 不列入業績（取消、改期、非訂單）</label></div>
     <p class="hint" id="dlg-where"></p>
     <div class="acts">
@@ -572,6 +620,8 @@ function toOrder(e) {
   const bPaid = get('實收金額');
   let paid = /^\d+$/.test(bPaid) ? Number(bPaid) : (titlePaid ? Number(titlePaid[1]) : null);
   let len = '', rate = '', memo = get('結帳備註'), excluded = get('不列入業績') === '是';
+  const rd = get('回訪日期');
+  let remind = /^\d{4}-\d{2}-\d{2}$/.test(rd) ? { date: rd, note: get('回訪備註'), done: get('回訪狀態') === '已聯絡' } : null;
   const lm = block.match(/量測[:：]\s*(\d+(?:\.\d+)?)\s*公分\s*[×x*]\s*(\d+(?:\.\d+)?)/);
   if (lm) { len = lm[1]; rate = lm[2]; }
 
@@ -583,6 +633,7 @@ function toOrder(e) {
     if (ed.rate !== undefined) rate = ed.rate;
     if (ed.memo !== undefined) memo = ed.memo;
     excluded = !!ed.excluded;
+    if (ed.remind !== undefined) remind = ed.remind && ed.remind.date ? ed.remind : null;
   }
   const lineSum = ITEM_LIST.reduce((s, k) => s + ((lines[k] && lines[k].a) || 0), 0);
   if (detailSet && paid === null && lineSum > 0) auto = lineSum;
@@ -594,7 +645,7 @@ function toOrder(e) {
     items: items.join('、'), itemList: items, area, old, amount, auto, paid, onsite, price, excluded,
     len, rate, memo, edited: !!ed, lines, lineSum, detailSet,
     name, phone, county, addr, contact,
-    remark: memo || leftoverNote(raw, contact),
+    remark: memo || leftoverNote(raw, contact), remind,
     summary: raw,
     note: raw.replace(/^\s*\d{1,2}月\d{1,2}號\s*/, '').replace(/\s*\n\s*/g, '\n').trim(),
   };
@@ -809,7 +860,81 @@ function draw() {
     (o) => (o.amount === 0 ? '沒有金額' : (!o.name ? '缺姓名' : '缺地址')), true);
 
   drawTable(rows, today);
+  drawReminders(today);
 }
+
+/* ---------- 回訪提醒 ---------- */
+const dayDiff = (from, to) => Math.round((new Date(to + 'T00:00:00Z') - new Date(from + 'T00:00:00Z')) / 86400000);
+const addMonths = (day, m) => { const d = new Date(day + 'T00:00:00Z'); const want = d.getUTCMonth() + m; d.setUTCDate(1); d.setUTCMonth(want); const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); d.setUTCDate(Math.min(+day.slice(8), last)); return d.toISOString().slice(0, 10); };
+function countdown(r, today) {
+  if (!r) return null;
+  if (r.done) return { cls: 'done', text: '已聯絡', n: 0 };
+  const n = dayDiff(today, r.date);
+  if (n < 0) return { cls: 'over', text: `過期 ${-n} 天`, n };
+  if (n === 0) return { cls: 'due', text: '今天回訪', n };
+  if (n <= 7) return { cls: 'due', text: `還有 ${n} 天`, n };
+  return { cls: '', text: n > 60 ? `還有 ${n} 天（約 ${Math.round(n / 30.4)} 個月）` : `還有 ${n} 天`, n };
+}
+function cdTag(r, today, short) {
+  const c = countdown(r, today);
+  if (!c) return null;
+  const s = document.createElement('span'); s.className = 'cd ' + c.cls;
+  s.textContent = short && c.cls === '' ? `回訪 ${c.n} 天` : (c.cls === 'done' ? '已回訪' : c.text);
+  s.title = `回訪日期 ${r.date}${r.note ? '：' + r.note : ''}`;
+  return s;
+}
+function drawReminders(today) {
+  const showDone = $('r-showdone').checked;
+  const list = orders.filter((o) => o.remind && (showDone || !o.remind.done))
+    .sort((a, b) => (a.remind.done - b.remind.done) || a.remind.date.localeCompare(b.remind.date));
+  const due = orders.filter((o) => o.remind && !o.remind.done && dayDiff(today, o.remind.date) <= 7).length;
+  const badge = $('remind-badge');
+  badge.hidden = !due; badge.textContent = `${due} 位客人該回訪了`;
+  const box = $('remind-list'); box.replaceChildren();
+  if (!list.length) {
+    const p = document.createElement('p'); p.className = 'note';
+    p.textContent = orders.some((o) => o.remind) ? '目前沒有待聯絡的回訪。' : '還沒有設定任何回訪提醒。打開一筆訂單的「編輯」，在「回訪提醒」選「1 年後」就會出現在這裡。';
+    box.append(p); return;
+  }
+  for (const o of list.slice(0, 12)) {
+    const c = countdown(o.remind, today);
+    const row = document.createElement('div'); row.className = 'rrow ' + (c.cls === 'done' ? '' : c.cls);
+    const big = document.createElement('div'); big.className = 'big';
+    big.textContent = c.cls === 'done' ? '已聯絡' : (c.n < 0 ? `過期 ${-c.n} 天` : c.n === 0 ? '今天' : `${c.n} 天`);
+    const sm = document.createElement('small'); sm.textContent = `${o.remind.date.replace(/-/g, '/')} 回訪`; big.append(sm);
+    const who = document.createElement('div'); who.className = 'who';
+    const b = document.createElement('b'); b.textContent = o.name || '（未填姓名）'; who.append(b);
+    const ph = document.createElement('small'); ph.textContent = o.phone; who.append(ph);
+    const nt = document.createElement('span'); nt.className = 'nt';
+    nt.textContent = [o.remind.note, `上次 ${o.day.slice(5).replace('-', '/')} ${o.items}`].filter(Boolean).join(' · ');
+    who.append(nt);
+    const ops = document.createElement('div'); ops.className = 'ops';
+    if (o.phone) { const a = document.createElement('a'); a.className = 'btn small'; a.href = 'tel:' + o.phone; a.textContent = '撥打'; ops.append(a); }
+    const dn = document.createElement('button'); dn.type = 'button'; dn.className = 'btn small';
+    dn.textContent = o.remind.done ? '改回未聯絡' : '已聯絡';
+    dn.addEventListener('click', () => quickEdit(o, { remind: { ...o.remind, done: !o.remind.done } }));
+    const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'btn small'; ed.textContent = '編輯';
+    ed.addEventListener('click', () => openEdit(o));
+    ops.append(dn, ed);
+    row.append(big, who, ops);
+    box.append(row);
+  }
+  if (list.length > 12) { const m = document.createElement('div'); m.className = 'mini'; const d = document.createElement('div'); d.className = 'more'; d.textContent = `還有 ${list.length - 12} 筆，依日期排在後面。`; m.append(d); box.append(m); }
+}
+// 不開編輯視窗、直接改一個欄位（例如標記已聯絡）
+function quickEdit(o, patch) {
+  const prev = edits[o.id] || {};
+  edits[o.id] = Object.assign({
+    summary: prev.summary, items: o.itemList, lines: o.lines, area: o.area, old: o.old,
+    contact: { name: o.name, phone: o.phone, county: o.county, addr: o.addr },
+    amount: o.paid, len: o.len, rate: o.rate, memo: o.memo, excluded: o.excluded, remind: o.remind,
+    day: o.day,
+  }, patch, { at: new Date().toISOString() });
+  saveEdits(); rebuild(); draw();
+  if (canWrite()) pushOne(o.id);
+}
+$('r-showdone').addEventListener('change', () => drawReminders(todayTW()));
+$('remind-badge').addEventListener('click', () => $('remind-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }));
 
 function miniList(box, list, limit, empty, right, warn) {
   box.replaceChildren();
@@ -959,6 +1084,7 @@ function drawTable(rows, today) {
     const d = td(`${dt}（${wd}）${o.time === '全天' ? '' : ' ' + o.time}`, 'stick');
     if (o.day >= today) { d.append(' '); const t = document.createElement('span'); t.className = 'tag warn'; t.textContent = '預約'; d.append(t); }
     const nc = td(o.name || '—');
+    const cdt = cdTag(o.remind, today, true); if (cdt) nc.append(cdt);
     if (o.old === '舊客戶') { const t = document.createElement('span'); t.className = 'tag old'; t.textContent = '舊客'; nc.append(t); }
     td(o.phone);
     td((o.county && !/^[臺台]中市$/.test(o.county) ? o.county : '') + (o.area === '未標示' ? (o.county ? '' : '—') : o.area));
@@ -1037,6 +1163,10 @@ function openEdit(o) {
   $('dlg-amt').placeholder = o.auto ? '目前 ' + fmt(o.auto) : '尚未有金額';
   $('dlg-memo').value = o.memo || '';
   $('dlg-excl').checked = o.excluded;
+  $('dlg-rdate').value = o.remind ? o.remind.date : '';
+  $('dlg-rnote').value = o.remind ? o.remind.note || '' : '';
+  $('dlg-rdone').checked = !!(o.remind && o.remind.done);
+  showRemindCount();
   $('dlg-hint').textContent = '總金額：有填實收金額就用實收；沒填就用品項金額合計或標題裡的金額。填量測長度與單價會自動算出實收金額。';
   showLineSum();
   $('dlg-clear').hidden = !edits[o.id] && o.price !== '實收' && !o.excluded && !o.detailSet;
@@ -1076,12 +1206,26 @@ $('dlg-save').addEventListener('click', () => {
     amount: amt === '' ? null : Math.round(Number(amt)),
     len: $('dlg-len').value, rate: $('dlg-rate').value, memo: $('dlg-memo').value.trim(),
     excluded: $('dlg-excl').checked, day: editing.day, at: new Date().toISOString(),
+    remind: $('dlg-rdate').value ? { date: $('dlg-rdate').value, note: $('dlg-rnote').value.trim(), done: $('dlg-rdone').checked } : null,
   };
   if (!saveEdits()) { $('dlg-hint').textContent = '這個瀏覽器不允許儲存，請改用 Chrome 或 Edge 開啟。'; return; }
   const id = editing.id;
   dlg.close(); rebuild(); draw();
   if (canWrite()) pushOne(id);
 });
+
+function showRemindCount() {
+  const d = $('dlg-rdate').value;
+  if (!d) { $('dlg-rcount').textContent = '沒有設定回訪提醒。'; return; }
+  const c = countdown({ date: d, done: $('dlg-rdone').checked }, todayTW());
+  $('dlg-rcount').textContent = `${d.replace(/-/g, '/')} 回訪，${c.text}`;
+}
+document.querySelectorAll('.remind-quick [data-m]').forEach((b) => b.addEventListener('click', () => {
+  const base = editing && editing.day <= todayTW() ? editing.day : todayTW();
+  $('dlg-rdate').value = addMonths(base, +b.dataset.m); $('dlg-rdone').checked = false; showRemindCount();
+}));
+$('dlg-rclear').addEventListener('click', () => { $('dlg-rdate').value = ''; $('dlg-rnote').value = ''; $('dlg-rdone').checked = false; showRemindCount(); });
+['dlg-rdate', 'dlg-rdone'].forEach((id) => $(id).addEventListener('change', showRemindCount));
 
 /* ---------- 寫回 Google 日曆 ---------- */
 const canWrite = () => !!(window.JT_WRITE && window.JT_WRITE.url && window.JT_WRITE.token);
@@ -1106,6 +1250,8 @@ async function pushOne(id) {
   if (ed.contact || ed.lines) {
     const c = ed.contact || {};
     payload.changes.fields = { '姓名': c.name || '', '電話': c.phone || '', '縣市': c.county || '', '詳細地址': c.addr || '', '明細': ed.lines ? detailText(ed.lines) : '' };
+    const r = ed.remind;
+    if (r && r.date) Object.assign(payload.changes.fields, { '回訪日期': r.date, '回訪備註': r.note || '', '回訪狀態': r.done ? '已聯絡' : '待聯絡' });
   }
   if (typeof ed.summary === 'string' && ed.summary.trim()) payload.summary = ed.summary;
   const r = await push(payload);
