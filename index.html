@@ -771,7 +771,10 @@ function draw() {
   fillSelect($('f-month'), [['', '全年'], ...monsInYear.map((m) => [m, `${+m} 月`])], F.mon);
   F.mon = $('f-month').value;
   $('f-month').disabled = F.year === 'all';
-  fillSelect($('f-item'), [['', '全部項目'], ...BROAD_LIST.filter((g) => !['沙發', '水塔', '地板', '其他'].includes(g)).map((g) => ['G:' + g, `${g}（全部）`]), ...ITEM_LIST.map((x) => [x, x])], F.item);
+  // 只顯示大分類（冷氣含窗型、分離式；洗衣機含直立、滾筒；床墊含單人、雙人）
+  if (F.item && !F.item.startsWith('G:')) F.item = 'G:' + (BROAD[F.item] || F.item);
+  fillSelect($('f-item'), [['', '全部項目'], ...BROAD_LIST.map((g) => ['G:' + g, g])], F.item);
+  F.item = $('f-item').value;
   const byLast = (a, b) => (a === '未標示') - (b === '未標示') || a.localeCompare(b, 'zh-Hant');
   const counties = [...new Set(orders.map(countyOf))].sort((a, b) => (b === '台中市') - (a === '台中市') || byLast(a, b));
   fillSelect($('f-county'), [['', '全部縣市'], ...counties.map((c) => [c, c])], F.county);
@@ -852,7 +855,7 @@ function draw() {
     return [...m.values()].sort((a, b) => b.sum - a.sum || b.n - a.n);
   };
   const base = inMonth.filter((o) => !o.excluded);
-  hbars($('by-item'), group(base.filter((o) => byArea(o) && byCust(o)), (o) => o.itemList), F.item, (v) => { F.item = v; draw(); }, 'var(--c1)');
+  hbars($('by-item'), group(base.filter((o) => byArea(o) && byCust(o)), (o) => broadOf(o)), F.item.replace(/^G:/, ''), (v) => { F.item = v ? 'G:' + v : ''; draw(); }, 'var(--c1)');
   hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o) && (!F.county || countyOf(o) === F.county)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)', 8);
   hbars($('by-cust'), group(base.filter((o) => byItem(o) && byArea(o)), (o) => [o.old]), F.cust, (v) => { F.cust = v; draw(); }, 'var(--c3)');
 
