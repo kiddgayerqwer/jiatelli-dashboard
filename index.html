@@ -197,6 +197,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
 .acts .left { margin-right: auto; }
 .conn .acts { border-top: 0; padding-top: 0; }
 .hint { font-size: .78rem; color: var(--muted); margin: 0; }
+section.card, #remind-panel { scroll-margin-top: 96px; }
 .remind-box { padding: 12px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--panel-2); color: var(--fg); font-size: .84rem; }
 .remind-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 2px; }
 .remind-quick input[type=date] { min-height: 2rem; padding: 2px 10px; width: auto; }
@@ -328,7 +329,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
 
   <section class="card">
     <div class="tools">
-      <h2>訂單明細</h2>
+      <h2 id="orders-title">訂單明細</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn small" id="export-csv" type="button">匯出 Excel</button>
         <button class="btn small" id="export-edits" type="button">備份我的修改</button>
@@ -341,6 +342,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
     </div>
     <p class="note" id="table-note"></p>
     <button class="chip" id="todo-chip" type="button" hidden>只看待處理訂單 ✕</button>
+    <button class="chip" id="due-chip" type="button" hidden>只看該回訪的客人 ✕</button>
     <div class="tablebox">
       <table class="xl">
         <thead><tr>
@@ -645,7 +647,7 @@ function toOrder(e) {
     items: items.join('、'), itemList: items, area, old, amount, auto, paid, onsite, price, excluded,
     len, rate, memo, edited: !!ed, lines, lineSum, detailSet,
     name, phone, county, addr, contact,
-    remark: memo || leftoverNote(raw, contact), remind,
+    remark: memo || leftoverNote(raw, contact), remind, remindDate: remind ? remind.date : '9999',
     summary: raw,
     note: raw.replace(/^\s*\d{1,2}月\d{1,2}號\s*/, '').replace(/\s*\n\s*/g, '\n').trim(),
   };
@@ -655,7 +657,9 @@ function toOrder(e) {
 
 /* ---------- 狀態 ---------- */
 let events = [], orders = [], sortKey = 'day', sortAsc = true;
-const F = { year: null, mon: '', item: '', county: '', area: '', cust: '', todo: false };
+const F = { year: null, mon: '', item: '', county: '', area: '', cust: '', todo: false, due: false };
+// 該回訪：設了回訪提醒、還沒聯絡、7 天內到期或已過期
+const isDue = (o, today) => !!(o.remind && !o.remind.done && dayDiff(today, o.remind.date) <= 7);
 // 需要補資料：沒有金額，或找不到姓名／地址
 const needsWork = (o) => !o.excluded && (o.amount === 0 || !o.name || (!o.addr && o.area === '未標示'));
 // 上一個比較期間：單月 → 上個月；整年 → 去年；全部 → 無
@@ -785,7 +789,8 @@ function draw() {
   const byCust = (o) => !F.cust || o.old === F.cust;
   const scoped = inMonth.filter((o) => byItem(o) && byArea(o) && byCust(o));
   const todoRows = scoped.filter(needsWork);
-  const rows = F.todo ? todoRows : scoped;
+  // 「該回訪」不受年份、月份等篩選影響，依回訪日期排
+  const rows = F.due ? orders.filter((o) => isDue(o, today)) : (F.todo ? todoRows : scoped);
   const counted = scoped.filter((o) => !o.excluded);
 
   const sum = counted.reduce((s, o) => s + o.amount, 0);
@@ -807,7 +812,8 @@ function draw() {
   $('k-todo-sub').textContent = todoRows.length ? `${noPrice} 筆沒有金額 · ${todoRows.length - noPrice} 筆缺姓名或地址` : '都已補齊';
   $('k-todo-d').textContent = todoRows.length ? (F.todo ? '正在只看這些訂單，再按一次取消' : '按這裡只看這些訂單') : '';
   $('k-todo-card').classList.toggle('on', F.todo);
-  $('todo-chip').hidden = !F.todo;
+  $('todo-chip').hidden = !F.todo || F.due;
+  $('due-chip').hidden = !F.due;
 
   // 和上一期比較（進行中的期間只比到今天為止）
   const pp = prevPeriod();
@@ -934,7 +940,13 @@ function quickEdit(o, patch) {
   if (canWrite()) pushOne(o.id);
 }
 $('r-showdone').addEventListener('change', () => drawReminders(todayTW()));
-$('remind-badge').addEventListener('click', () => $('remind-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+$('remind-badge').addEventListener('click', () => {
+  F.due = true; F.todo = false; $('search').value = '';
+  sortKey = 'remindDate'; sortAsc = true;
+  draw();
+  $('orders-title').closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('due-chip').addEventListener('click', () => { F.due = false; sortKey = 'day'; sortAsc = true; draw(); });
 
 function miniList(box, list, limit, empty, right, warn) {
   box.replaceChildren();
@@ -1340,9 +1352,9 @@ $('f-item').addEventListener('change', () => { F.item = $('f-item').value; draw(
 $('f-county').addEventListener('change', () => { F.county = $('f-county').value; F.area = ''; draw(); });
 $('f-area').addEventListener('change', () => { F.area = $('f-area').value; draw(); });
 $('f-cust').addEventListener('change', () => { F.cust = $('f-cust').value; draw(); });
-$('k-todo-card').addEventListener('click', () => { F.todo = !F.todo; draw(); if (F.todo) $('todo-chip').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+$('k-todo-card').addEventListener('click', () => { F.due = false; F.todo = !F.todo; draw(); if (F.todo) $('todo-chip').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 $('todo-chip').addEventListener('click', () => { F.todo = false; draw(); });
-$('reset').addEventListener('click', () => { F.todo = false; F.item = F.county = F.area = F.cust = ''; $('search').value = ''; draw(); });
+$('reset').addEventListener('click', () => { F.due = false; F.todo = false; F.item = F.county = F.area = F.cust = ''; $('search').value = ''; draw(); });
 $('search').addEventListener('input', () => draw());
 $('reload').addEventListener('click', () => loadData());
 $('conn-open').addEventListener('click', () => {
