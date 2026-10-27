@@ -759,13 +759,11 @@ function fillSelect(sel, opts, val) {
 
 function draw() {
   const today = todayTW();
-  const months = [...new Set(orders.map((o) => o.day.slice(0, 7)))].sort().reverse();
+  // 今天所在的月份一定列在選單裡（就算這個月還沒有訂單）
+  const months = [...new Set(orders.map((o) => o.day.slice(0, 7)).concat(today.slice(0, 7)))].sort().reverse();
   const years = [...new Set(months.map((m) => m.slice(0, 4)))];
-  if (F.year === null) {
-    const start = months.includes(today.slice(0, 7)) ? today.slice(0, 7) : (months[0] || '');
-    F.year = start ? start.slice(0, 4) : 'all';
-    F.mon = start ? start.slice(5) : '';
-  }
+  // 進網頁時（以及資料還沒載入前）預設看今天所在的月份
+  if (F.year === null || !orders.length) { F.year = today.slice(0, 4); F.mon = today.slice(5, 7); }
   fillSelect($('f-year'), [...years.map((y) => [y, `${y} 年`]), ['all', '全部年份']], F.year);
   F.year = $('f-year').value;
   const monsInYear = F.year === 'all' ? [] : [...new Set(months.filter((m) => m.startsWith(F.year)).map((m) => m.slice(5)))].sort();
@@ -1387,6 +1385,10 @@ document.querySelectorAll('th[data-k] button').forEach((b) => b.addEventListener
 }));
 let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(draw, 150); });
 setInterval(() => { if (!dlg.open && document.visibilityState === 'visible') loadData(); }, 5 * 60 * 1000);
+// 從其他頁面按「上一頁」回來、或手機切回來時，瀏覽器可能保留舊的篩選；一律回到今天的月份
+window.addEventListener('pageshow', (e) => { if (e.persisted) { resetToToday(); draw(); } });
+function resetToToday() { const d = todayTW(); F.year = d.slice(0, 4); F.mon = d.slice(5, 7); }
+document.querySelectorAll('select').forEach((s) => s.setAttribute('autocomplete', 'off'));
 loadData();
 </script>
 </body>
