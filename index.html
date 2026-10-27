@@ -657,7 +657,7 @@ function toOrder(e) {
 }
 
 /* ---------- 狀態 ---------- */
-let events = [], orders = [], sortKey = 'day', sortAsc = true;
+let events = [], orders = [], sortKey = 'day', sortAsc = false;
 const F = { year: null, mon: '', item: '', county: '', area: '', cust: '', todo: false, due: false };
 // 該回訪：設了回訪提醒、還沒聯絡、7 天內到期或已過期
 const isDue = (o, today) => !!(o.remind && !o.remind.done && dayDiff(today, o.remind.date) <= 7);
@@ -948,7 +948,7 @@ $('remind-badge').addEventListener('click', () => {
   draw();
   $('orders-title').closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
-$('due-chip').addEventListener('click', () => { F.due = false; sortKey = 'day'; sortAsc = true; draw(); });
+$('due-chip').addEventListener('click', () => { F.due = false; sortKey = 'day'; sortAsc = false; draw(); });
 
 function miniList(box, list, limit, empty, right, warn) {
   box.replaceChildren();
@@ -1084,7 +1084,7 @@ function drawTable(rows, today) {
   shown.sort((a, b) => {
     const va = a[sortKey], vb = b[sortKey];
     const c = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'zh-Hant');
-    return (sortAsc ? c : -c) || (a.day + a.time).localeCompare(b.day + b.time);
+    return (sortAsc ? c : -c) || (a.day + a.time).localeCompare(b.day + b.time) * (sortKey === 'day' && !sortAsc ? -1 : 1);
   });
   document.querySelectorAll('th[data-k]').forEach((th) => th.setAttribute('aria-sort', th.dataset.k === sortKey ? (sortAsc ? 'ascending' : 'descending') : 'none'));
   const body = $('tbody');
@@ -1384,7 +1384,7 @@ $('conn-forget').addEventListener('click', () => {
 });
 document.querySelectorAll('th[data-k] button').forEach((b) => b.addEventListener('click', () => {
   const k = b.parentElement.dataset.k;
-  if (sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = k !== 'amount'; }
+  if (sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = k !== 'amount' && k !== 'day'; }
   draw();
 }));
 let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(draw, 150); });
