@@ -198,6 +198,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
 .acts .left { margin-right: auto; }
 .conn .acts { border-top: 0; padding-top: 0; }
 .hint { font-size: .78rem; color: var(--muted); margin: 0; }
+.show-sm { display: none !important; }
+@media (max-width: 40rem) { .show-sm { display: flex !important; } }
+a.tel { color: inherit; text-decoration: none; }
+a.tel:hover { color: var(--accent-2); }
 section.card, #remind-panel { scroll-margin-top: 96px; }
 .remind-box { padding: 12px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--panel-2); color: var(--fg); font-size: .84rem; }
 .remind-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 2px; }
@@ -244,6 +248,39 @@ section.card, #remind-panel { scroll-margin-top: 96px; }
   .mini .row { grid-template-columns: 1fr auto; }
   .mini .who { grid-column: 1 / -1; grid-row: 2; }
   .hide-sm { display: none; }
+
+  /* 頂部列：手機上不固定，省下畫面 */
+  .head { position: static; padding: 12px 14px; gap: 10px; background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sync { gap: 6px; font-size: .74rem; }
+  .sync > span:first-child { padding: 3px 9px; }
+  .sync .btn.small { min-height: 1.8rem; padding: 2px 10px; font-size: .78rem; }
+
+  /* 訂單明細：一筆一張卡片 */
+  .tablebox { max-height: none; overflow: visible; border: 0; border-radius: 0; }
+  .xl thead { display: none; }
+  .xl, .xl tbody { display: block; }
+  .xl tbody { display: flex; flex-direction: column; gap: 10px; }
+  .xl tr { display: grid; grid-template-columns: auto 1fr auto; column-gap: 10px; row-gap: 6px;
+    grid-template-areas: "date date total" "name name total" "phone phone phone" "area addr addr" "items items items" "remark remark remark" "act act act";
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px; }
+  .xl td { display: block; padding: 0; border: 0; white-space: normal; min-width: 0; max-width: none; }
+  tbody tr:hover td, .xl tbody tr:hover td.stick { background: transparent; }
+  .xl td.stick { grid-area: date; position: static; background: transparent; font-size: 1rem; font-weight: 700; }
+  .xl td.c-total { grid-area: total; font-size: 1.15rem; text-align: right; align-self: start; }
+  .xl td.c-name { grid-area: name; font-size: 1rem; font-weight: 500; }
+  .xl td.c-phone { grid-area: phone; font-family: var(--num); }
+  .xl td.c-phone:empty { display: none; }
+  .xl td.c-phone a.tel { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-2); }
+  .xl td.c-phone a.tel::before { content: '撥打'; font-family: var(--font); font-size: .72rem; padding: 1px 8px; border-radius: 999px; border: 1px solid rgba(77, 142, 247, .45); }
+  .xl td.c-area { grid-area: area; color: var(--muted); font-size: .85rem; }
+  .xl td.addr { grid-area: addr; color: var(--muted); font-size: .85rem; overflow: visible; text-overflow: clip; }
+  .xl td.items { grid-area: items; min-width: 0; padding: 8px 10px; background: var(--bg); border-radius: 8px; font-size: .9rem; }
+  .xl td.items:empty { display: none; }
+  .xl td.remark { grid-area: remark; font-size: .8rem; }
+  .xl td.remark:empty { display: none; }
+  .xl td.c-act { grid-area: act; display: flex; justify-content: flex-end; }
+  .xl td.c-act .btn { min-width: 6rem; }
+  tr.excluded { opacity: .5; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -340,6 +377,10 @@ section.card, #remind-panel { scroll-margin-top: 96px; }
     </div>
     <div class="filters" style="margin-bottom:10px">
       <label class="grow" for="search">搜尋<input id="search" type="search" placeholder="姓名、電話、地址、項目…"></label>
+      <label class="show-sm" for="m-sort">排序<select id="m-sort">
+        <option value="day|0">日期：新到舊</option><option value="day|1">日期：舊到新</option>
+        <option value="amount|0">金額：高到低</option><option value="remindDate|1">回訪日期：近到遠</option>
+      </select></label>
     </div>
     <p class="note" id="table-note"></p>
     <button class="chip" id="todo-chip" type="button" hidden>只看待處理訂單 ✕</button>
@@ -1097,11 +1138,12 @@ function drawTable(rows, today) {
     const dt = (F.year === 'all' ? o.day.slice(0, 4) + '/' : '') + o.day.slice(5).replace('-', '/');
     const d = td(`${dt}（${wd}）${o.time === '全天' ? '' : ' ' + o.time}`, 'stick');
     if (o.day >= today) { d.append(' '); const t = document.createElement('span'); t.className = 'tag warn'; t.textContent = '預約'; d.append(t); }
-    const nc = td(o.name || '—');
+    const nc = td(o.name || '—', 'c-name');
     const cdt = cdTag(o.remind, today, true); if (cdt) nc.append(cdt);
     if (o.old === '舊客戶') { const t = document.createElement('span'); t.className = 'tag old'; t.textContent = '舊客'; nc.append(t); }
-    td(o.phone);
-    td((o.county && !/^[臺台]中市$/.test(o.county) ? o.county : '') + (o.area === '未標示' ? (o.county ? '' : '—') : o.area));
+    const pc = td('', 'c-phone');
+    if (o.phone) { const a = document.createElement('a'); a.href = 'tel:' + o.phone; a.className = 'tel'; a.textContent = o.phone; pc.append(a); }
+    td((o.county && !/^[臺台]中市$/.test(o.county) ? o.county : '') + (o.area === '未標示' ? (o.county ? '' : '—') : o.area), 'c-area');
     td(o.addr, 'addr').title = o.addr;
     const ic = td('', 'items');
     for (const k of o.itemList) {
@@ -1113,14 +1155,14 @@ function drawTable(rows, today) {
       const am = document.createElement('span'); am.className = 'a' + (l.a ? '' : ' none'); am.textContent = l.a ? '$' + fmt(l.a) : '待報價';
       row.append(nm, am); ic.append(row);
     }
-    const tot = td(fmt(o.amount), 'r');
+    const tot = td(fmt(o.amount), 'r c-total');
     const tag = document.createElement('span');
     tag.className = 'tag sub' + (o.price === '待量測報價' ? ' warn' : (o.price === '標題判斷' || o.price === '不列入' ? ' mute' : ''));
     const ed = edits[o.id];
     tag.textContent = o.price + (ed ? (ed.pushed ? '・已改' : (canWrite() ? '・未上傳' : '・本機')) : '');
     tot.append(tag);
     td(o.remark, 'remark');
-    const ac = td('');
+    const ac = td('', 'c-act');
     const btn = document.createElement('button');
     btn.type = 'button'; btn.className = 'btn small'; btn.textContent = '編輯';
     btn.addEventListener('click', () => openEdit(o));
@@ -1128,7 +1170,7 @@ function drawTable(rows, today) {
     return tr;
   }));
   const waiting = Object.values(edits).filter((e) => !e.pushed).length;
-  $('table-note').textContent = `顯示 ${shown.length} 筆。姓名、地址、品項是從行程標題自動判斷的，不對的地方請按「編輯」修正；滑鼠停在一列上可看完整標題。`
+  $('table-note').textContent = `顯示 ${shown.length} 筆。姓名、地址、品項是從行程標題自動判斷的，不對的地方請按「編輯」修正。${matchMedia('(max-width: 40rem)').matches ? '' : '滑鼠停在一列上可看完整標題。'}`
     + (canWrite() ? (waiting ? `有 ${waiting} 筆修改還沒寫回日曆，連上網路後會自動重試。` : '') + (window.JT_FEED && !(window.JT_FEED.version >= 3) ? '（日曆連線程式需要更新才能寫回姓名、地址、品項明細，見使用說明。）' : '')
       : (Object.keys(edits).length ? `有 ${Object.keys(edits).length} 筆修改只存在這台電腦。` : ''));
 }
@@ -1358,6 +1400,7 @@ $('k-todo-card').addEventListener('click', () => { F.due = false; F.todo = !F.to
 $('todo-chip').addEventListener('click', () => { F.todo = false; draw(); });
 $('reset').addEventListener('click', () => { F.due = false; F.todo = false; F.item = F.county = F.area = F.cust = ''; $('search').value = ''; draw(); });
 $('search').addEventListener('input', () => draw());
+$('m-sort').addEventListener('change', () => { const [k, asc] = $('m-sort').value.split('|'); sortKey = k; sortAsc = asc === '1'; draw(); });
 $('reload').addEventListener('click', () => loadData());
 $('conn-open').addEventListener('click', () => {
   const c = getConn();
