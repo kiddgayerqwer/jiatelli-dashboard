@@ -198,6 +198,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(
 .acts .left { margin-right: auto; }
 .conn .acts { border-top: 0; padding-top: 0; }
 .hint { font-size: .78rem; color: var(--muted); margin: 0; }
+.hint:empty { display: none; }
 .show-sm { display: none !important; }
 @media (max-width: 40rem) { .show-sm { display: flex !important; } }
 a.tel { color: inherit; text-decoration: none; }
@@ -422,13 +423,13 @@ section.card, #remind-panel { scroll-margin-top: 96px; }
       <div class="items-grid" id="dlg-lines"></div>
       <span class="hint" id="dlg-linesum"></span>
     </div>
-    <div class="row2">
+    <div class="row2" hidden>
       <label class="field" for="dlg-len">量測長度（公分）<input id="dlg-len" type="number" min="0" step="1" inputmode="numeric"></label>
       <label class="field" for="dlg-rate">單價（元／公分）<input id="dlg-rate" type="number" min="0" step="1" inputmode="numeric"></label>
       <label class="field" for="dlg-amt">實收金額（元）<input id="dlg-amt" type="number" min="0" step="1" inputmode="numeric"></label>
     </div>
     <p class="hint" id="dlg-hint"></p>
-    <div class="checks"><label><input type="checkbox" id="dlg-amt-title" checked> 把實收金額寫進標題（最後一行「實收：○○元」）</label></div>
+    <div class="checks"><label><input type="checkbox" id="dlg-amt-title" checked> 把總金額寫進標題（最後一行「實收：○○元」）</label></div>
     <label class="field" for="dlg-memo">備註<input id="dlg-memo" type="text" placeholder="例：L 型沙發含腳椅"></label>
     <div class="field remind-box">回訪提醒（需要之後再聯絡這位客人才設定）
       <div class="remind-quick">
@@ -1193,7 +1194,7 @@ function readLines() {
 }
 function showLineSum() {
   const s = Object.values(readLines()).reduce((x, l) => x + (l.a || 0), 0);
-  $('dlg-linesum').textContent = s ? `品項金額合計 NT$${fmt(s)}${$('dlg-amt').value ? '' : '（實收金額留空時，總金額就用這個合計）'}` : '';
+  $('dlg-linesum').textContent = s ? `總金額 NT$${fmt(s)}（品項金額合計）` : '還沒有填品項金額，總金額會沿用標題裡的金額。';
 }
 $('dlg-lines').addEventListener('input', showLineSum);
 
@@ -1217,7 +1218,7 @@ function openEdit(o) {
   $('dlg-rnote').value = o.remind ? o.remind.note || '' : '';
   $('dlg-rdone').checked = !!(o.remind && o.remind.done);
   showRemindCount();
-  $('dlg-hint').textContent = '總金額：有填實收金額就用實收；沒填就用品項金額合計或標題裡的金額。填量測長度與單價會自動算出實收金額。';
+  $('dlg-hint').textContent = '';
   showLineSum();
   $('dlg-clear').hidden = !edits[o.id] && o.price !== '實收' && !o.excluded && !o.detailSet;
   $('dlg-where').textContent = canWrite()
@@ -1244,8 +1245,8 @@ $('dlg-save').addEventListener('click', () => {
   const lines = readLines();
   let items = ITEM_LIST.filter((k) => lines[k]);
   if (!items.length) items = ['其他'];
-  const amt = $('dlg-amt').value.trim();
-  if (amt !== '' && !(Number(amt) >= 0)) { $('dlg-hint').textContent = '實收金額要是 0 以上的數字。'; return; }
+  const lineSum = Object.values(lines).reduce((s, l) => s + (l.a || 0), 0);
+  const amt = lineSum > 0 ? String(lineSum) : (editing.paid !== null && editing.paid !== undefined ? String(editing.paid) : '');
   let summary = $('dlg-summary').value.replace(/\r/g, '').replace(/\s+$/, '');
   if (!summary.trim()) { $('dlg-hint').textContent = '行程標題不能空白。'; return; }
   if ($('dlg-amt-title').checked && amt !== '') summary = summary.replace(PAID_LINE, '').replace(/\s+$/, '') + '\n實收：' + Math.round(Number(amt)) + '元';
