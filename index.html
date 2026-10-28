@@ -355,7 +355,6 @@ section.card, #remind-panel { scroll-margin-top: 96px; }
   </section>
 
   <div class="grid2">
-    <section class="card"><h2>接下來 7 天的預約</h2><p class="note">從今天起一週內的行程，點一筆可編輯。</p><div class="mini" id="upcoming"></div></section>
     <section class="card"><h2>需要補資料的訂單</h2><p class="note">還沒有金額，或找不到姓名、地址的訂單（目前篩選範圍內）。點一筆可編輯。</p><div class="mini" id="todo-list"></div></section>
   </div>
 
@@ -900,11 +899,6 @@ function draw() {
   hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o) && (!F.county || countyOf(o) === F.county)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)', 8);
   hbars($('by-cust'), group(base.filter((o) => byItem(o) && byArea(o)), (o) => [o.old]), F.cust, (v) => { F.cust = v; draw(); }, 'var(--c3)');
 
-  // 接下來 7 天（不受期間篩選影響）
-  const end = new Date(today + 'T00:00:00Z'); end.setUTCDate(end.getUTCDate() + 7);
-  const endDay = end.toISOString().slice(0, 10);
-  const upcoming = orders.filter((o) => !o.excluded && o.day >= today && o.day < endDay).sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
-  miniList($('upcoming'), upcoming, 10, '這 7 天沒有預約。', (o) => (o.amount ? money(o.amount) : '待報價'));
   miniList($('todo-list'), todoRows.slice().sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time)), 8, '目前篩選範圍內都已補齊。',
     (o) => (o.amount === 0 ? '沒有金額' : (!o.name ? '缺姓名' : '缺地址')), true);
 
