@@ -360,7 +360,7 @@ section.card, #remind-panel { scroll-margin-top: 96px; }
   </div>
 
   <div class="grid3">
-    <section class="card"><h2>依服務項目</h2><p class="note">一筆含多個項目時，金額計入每個項目。點一列可篩選。</p><div class="hbars" id="by-item"></div></section>
+    <section class="card"><h2>依服務項目</h2><p class="note">只計算時間已到的訂單。一筆含多個項目時，金額計入每個項目。點一列可篩選。</p><div class="hbars" id="by-item"></div></section>
     <section class="card"><h2>依地區</h2><p class="note">依服務地址判斷。點一列可篩選，只列前 8 名。</p><div class="hbars" id="by-area"></div></section>
     <section class="card"><h2>新客戶與舊客戶</h2><p class="note">標題有「老客人／舊客／回購」或在編輯中設為舊客戶。</p><div class="hbars" id="by-cust"></div></section>
   </div>
@@ -701,6 +701,13 @@ function toOrder(e) {
 let events = [], orders = [], sortKey = 'day', sortAsc = false;
 const F = { year: null, mon: '', item: '', county: '', area: '', cust: '', todo: false, due: false };
 // 該回訪：設了回訪提醒、還沒聯絡、7 天內到期或已過期
+// 訂單時間是否已經到了（今天的訂單看開始時間）
+function isDone(o) {
+  const p = {};
+  for (const x of new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())) p[x.type] = x.value;
+  const d = `${p.year}-${p.month}-${p.day}`, hm = `${p.hour === '24' ? '00' : p.hour}:${p.minute}`;
+  return o.day < d || (o.day === d && (o.time === '全天' || !o.time || o.time <= hm));
+}
 const isDue = (o, today) => !!(o.remind && !o.remind.done && dayDiff(today, o.remind.date) <= 7);
 // 需要補資料：沒有金額，或找不到姓名／地址
 const needsWork = (o) => !o.excluded && (o.amount === 0 || !o.name || (!o.addr && o.area === '未標示'));
@@ -835,19 +842,20 @@ function draw() {
   // 「該回訪」不受年份、月份等篩選影響，依回訪日期排
   const rows = F.due ? orders.filter((o) => isDue(o, today)) : (F.todo ? todoRows : scoped);
   const counted = scoped.filter((o) => !o.excluded);
-
-  const sum = counted.reduce((s, o) => s + o.amount, 0);
-  const done = counted.filter((o) => o.day < today);
-  const doneSum = done.reduce((s, o) => s + o.amount, 0);
-  const priced = counted.filter((o) => o.amount > 0);
-  const pending = counted.filter((o) => o.price === '待量測報價').length;
+  // 業績只算「時間已經到了」的訂單；還沒到的預約另外列出，不計入
+  const done = counted.filter(isDone);
+  const later = counted.filter((o) => !isDone(o));
+  const sum = done.reduce((s, o) => s + o.amount, 0);
+  const laterSum = later.reduce((s, o) => s + o.amount, 0);
+  const priced = done.filter((o) => o.amount > 0);
+  const pending = done.filter((o) => o.price === '待量測報價').length;
   const label = F.year === 'all' ? '全部年份' : (F.mon ? `${F.year} 年 ${+F.mon} 月` : `${F.year} 年`);
   const filtered = F.item || F.county || F.area || F.cust;
 
   $('k-total').textContent = money(sum);
-  $('k-total-sub').textContent = `已完成 ${money(doneSum)} · 待服務 ${money(sum - doneSum)}`;
-  $('k-count').textContent = fmt(counted.length);
-  $('k-count-sub').textContent = `已完成 ${done.length} 筆 · 待服務 ${counted.length - done.length} 筆`;
+  $('k-total-sub').textContent = later.length ? `另有 ${later.length} 筆預約 ${money(laterSum)} 未計入` : '只計算時間已到的訂單';
+  $('k-count').textContent = fmt(done.length);
+  $('k-count-sub').textContent = later.length ? `另有 ${later.length} 筆預約未計入` : '只計算時間已到的訂單';
   $('k-avg').textContent = priced.length ? money(sum / priced.length) : '—';
   $('k-avg-sub').textContent = pending ? `以有金額的 ${priced.length} 筆計，${pending} 筆待報價` : `以 ${priced.length} 筆計`;
   const noPrice = todoRows.filter((o) => o.amount === 0).length;
@@ -864,8 +872,8 @@ function draw() {
   if (pp) {
     const ongoing = per && today.startsWith(per);
     const cut = ongoing ? shiftDay(today, pp) : null;
-    const prev = orders.filter((o) => o.day.startsWith(pp) && !o.excluded && byItem(o) && byArea(o) && byCust(o) && (!cut || o.day < cut));
-    const cur = ongoing ? counted.filter((o) => o.day < today) : counted;
+    const prev = orders.filter((o) => o.day.startsWith(pp) && !o.excluded && byItem(o) && byArea(o) && byCust(o) && (!cut || o.day <= cut));
+    const cur = done;
     const unit = F.mon ? '上月' : '去年';
     const tag = ongoing ? `${unit}同期` : unit;
     const pSum = prev.reduce((s, o) => s + o.amount, 0), cSum = cur.reduce((s, o) => s + o.amount, 0);
@@ -885,7 +893,7 @@ function draw() {
     put('k-avg-d', cAvg, pAvg, money);
   }
   $('take').textContent = !events.length ? '還沒有日曆資料。' : counted.length
-    ? `${label}${filtered ? '（已篩選）' : ''}共 ${counted.length} 筆訂單、業績 ${money(sum)}；已完成 ${done.length} 筆，還有 ${counted.length - done.length} 筆預約。${pending ? `${pending} 筆待量測報價。` : ''}`
+    ? `${label}${filtered ? '（已篩選）' : ''}到目前完成 ${done.length} 筆、業績 ${money(sum)}${later.length ? `；另有 ${later.length} 筆預約還沒到，未計入` : ''}。${pending ? `${pending} 筆待量測報價。` : ''}`
     : `${label}${filtered ? '在目前篩選下' : ''}沒有訂單。`;
 
   drawChart(counted, today);
@@ -895,7 +903,7 @@ function draw() {
     for (const o of list) for (const k of keys(o)) { const g = m.get(k) || { key: k, sum: 0, n: 0 }; g.sum += o.amount; g.n++; m.set(k, g); }
     return [...m.values()].sort((a, b) => b.sum - a.sum || b.n - a.n);
   };
-  const base = inMonth.filter((o) => !o.excluded);
+  const base = inMonth.filter((o) => !o.excluded && isDone(o));
   hbars($('by-item'), group(base.filter((o) => byArea(o) && byCust(o)), (o) => broadOf(o)), F.item.replace(/^G:/, ''), (v) => { F.item = v ? 'G:' + v : ''; draw(); }, 'var(--c1)');
   hbars($('by-area'), group(base.filter((o) => byItem(o) && byCust(o) && (!F.county || countyOf(o) === F.county)), (o) => [o.area]), F.area, (v) => { F.area = v; draw(); }, 'var(--c2)', 8);
   hbars($('by-cust'), group(base.filter((o) => byItem(o) && byArea(o)), (o) => [o.old]), F.cust, (v) => { F.cust = v; draw(); }, 'var(--c3)');
