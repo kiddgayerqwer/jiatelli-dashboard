@@ -79,11 +79,13 @@ select:disabled { opacity: .45; cursor: default; }
 .note { font-size: .8rem; color: var(--muted); margin: 3px 0 14px; }
 
 /* ---- 數字卡 ---- */
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 14px; }
 .kpi { display: flex; flex-direction: column; gap: 2px; }
 .kpi .lbl { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 8px; letter-spacing: .04em; }
 .kpi .lbl::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--k, var(--accent)); }
-.kpi:nth-child(1) { --k: var(--c1); } .kpi:nth-child(2) { --k: var(--c2); } .kpi:nth-child(3) { --k: var(--c3); } .kpi:nth-child(4) { --k: var(--warn); }
+.kpi:nth-child(1) { --k: var(--c1); } .kpi.k-booked { --k: var(--c1); } .kpi:nth-child(3) { --k: var(--c2); } .kpi:nth-child(4) { --k: var(--c3); } .kpi.todo { --k: var(--warn); }
+.kpi.k-booked .lbl::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--c1); }
+.kpi.k-booked .num { color: var(--accent-2); }
 .kpi .num { font-family: var(--num); font-size: 2.05rem; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin: 6px 0 2px; line-height: 1.15; }
 .kpi .sub { font-size: .78rem; color: var(--faint); margin-top: auto; padding-top: 8px; border-top: 1px dashed var(--line); }
 .kpi .delta { font-size: .8rem; font-variant-numeric: tabular-nums; min-height: 1.3em; color: var(--muted); }
@@ -241,6 +243,7 @@ section.card, #remind-panel { scroll-margin-top: 96px; }
   .brand h1 { gap: 0 8px; } .brand h1 .h1-sub { padding-left: 8px; }
   .take { display: none; }
   .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi.todo { grid-column: 1 / -1; }
   .kpi .num { font-size: 1.45rem; }
   .kpi .sub { display: none; }
   .card { padding: 14px; }
@@ -334,6 +337,7 @@ section.card, #remind-panel { scroll-margin-top: 96px; }
 
   <section class="kpis">
     <div class="card kpi"><div class="lbl">業績總額</div><div class="num" id="k-total">—</div><div class="delta" id="k-total-d"></div><div class="sub" id="k-total-sub"></div></div>
+    <div class="card kpi k-booked"><div class="lbl">預約未實現金額</div><div class="num" id="k-booked">—</div><div class="delta" id="k-booked-d"></div><div class="sub" id="k-booked-sub"></div></div>
     <div class="card kpi"><div class="lbl">訂單數</div><div class="num" id="k-count">—</div><div class="delta" id="k-count-d"></div><div class="sub" id="k-count-sub"></div></div>
     <div class="card kpi"><div class="lbl">平均客單價</div><div class="num" id="k-avg">—</div><div class="delta" id="k-avg-d"></div><div class="sub" id="k-avg-sub"></div></div>
     <button class="card kpi todo" id="k-todo-card" type="button"><div class="lbl">待處理訂單</div><div class="num" id="k-todo">—</div><div class="delta" id="k-todo-d"></div><div class="sub" id="k-todo-sub"></div></button>
@@ -853,7 +857,12 @@ function draw() {
   const filtered = F.item || F.county || F.area || F.cust;
 
   $('k-total').textContent = money(sum);
-  $('k-total-sub').textContent = later.length ? `另有 ${later.length} 筆預約 ${money(laterSum)} 未計入` : '只計算時間已到的訂單';
+  $('k-total-sub').textContent = '只計算時間已到的訂單';
+  $('k-booked').textContent = money(laterSum);
+  const nextO = later.slice().sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time))[0];
+  const laterNoPrice = later.filter((o) => o.amount === 0).length;
+  $('k-booked-d').textContent = later.length ? `${later.length} 筆預約${laterNoPrice ? `（${laterNoPrice} 筆還沒有金額）` : ''}` : '這段期間沒有未到的預約';
+  $('k-booked-sub').textContent = nextO ? `下一筆 ${+nextO.day.slice(5, 7)}/${+nextO.day.slice(8)} ${nextO.time === '全天' ? '' : nextO.time} · 業績＋預約 ${money(sum + laterSum)}` : '';
   $('k-count').textContent = fmt(done.length);
   $('k-count-sub').textContent = later.length ? `另有 ${later.length} 筆預約未計入` : '只計算時間已到的訂單';
   $('k-avg').textContent = priced.length ? money(sum / priced.length) : '—';
